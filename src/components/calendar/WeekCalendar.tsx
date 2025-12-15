@@ -9,6 +9,7 @@ import {
     isToday,
     hasTime,
     isOverdue,
+    formatTime,
 } from '../../domain/dateUtils';
 
 export interface WeekCalendarProps {
@@ -128,7 +129,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                             isOverdue(task) && 'border-l-2 border-l-red-500'
                                         )}
                                     >
-                                        <p className="text-xs text-slate-400">{task.startTime}</p>
+                                        <p className="text-xs text-slate-400">{formatTime(task.startTime!)}</p>
                                         <p className={clsx(
                                             'text-xs font-medium text-slate-200 truncate',
                                             task.status === 'done' && 'line-through'

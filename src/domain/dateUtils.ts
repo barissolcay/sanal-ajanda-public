@@ -41,7 +41,8 @@ export function formatDate(date: Date | string, formatStr: string = 'dd MMMM yyy
 }
 
 export function formatTime(time: string): string {
-    return time; // Already in HH:mm format
+    if (!time) return '';
+    return time.length > 5 ? time.substring(0, 5) : time;
 }
 
 export function formatDateRange(startDate: string, endDate?: string): string {
@@ -53,8 +54,10 @@ export function formatDateRange(startDate: string, endDate?: string): string {
 
 export function formatTimeRange(startTime?: string, endTime?: string): string {
     if (!startTime) return '';
-    if (!endTime) return startTime;
-    return `${startTime} – ${endTime}`;
+    const start = formatTime(startTime);
+    if (!endTime) return start;
+    const end = formatTime(endTime);
+    return `${start} – ${end}`;
 }
 
 // ============================================
@@ -67,7 +70,9 @@ export function formatTimeRange(startTime?: string, endTime?: string): string {
  */
 export function getTaskStart(task: Task): Date {
     const dateStr = task.startDate;
-    const timeStr = task.startTime || '00:00';
+    let timeStr = task.startTime || '00:00';
+    if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
+
     return parse(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', new Date());
 }
 
@@ -77,7 +82,9 @@ export function getTaskStart(task: Task): Date {
  */
 export function getTaskEnd(task: Task): Date {
     const dateStr = task.endDate || task.startDate;
-    const timeStr = task.endTime || '23:59';
+    let timeStr = task.endTime || '23:59';
+    if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
+
     return parse(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', new Date());
 }
 
