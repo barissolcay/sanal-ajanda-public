@@ -1,5 +1,6 @@
 // MonthPage - Monthly calendar view
 import React, { useState, useMemo } from 'react';
+import { clsx } from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { MonthCalendar } from '../components/calendar/MonthCalendar';
 import { TaskList } from '../components/tasks/TaskList';
@@ -122,9 +123,9 @@ export const MonthPage: React.FC = () => {
                 onNewTask={() => setIsFormOpen(true)}
             />
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Calendar and Task List */}
-                <div className="flex-1 flex flex-col overflow-hidden m-4 mr-2 gap-3">
+                <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4 md:mr-2 gap-3">
                     {/* Calendar */}
                     <div className="flex-1 glass-panel overflow-hidden">
                         <MonthCalendar
@@ -137,9 +138,9 @@ export const MonthPage: React.FC = () => {
                         />
                     </div>
 
-                    {/* Selected date tasks */}
+                    {/* Selected date tasks - Mobile: Always visible below calendar if date selected. Desktop: Below calendar */}
                     {selectedDate && (
-                        <div className="h-48 glass-panel p-4 overflow-hidden">
+                        <div className="h-48 glass-panel p-4 overflow-hidden shrink-0">
                             <h3 className="text-sm font-semibold text-slate-300 mb-3">
                                 {formatDate(selectedDate, 'd MMMM yyyy, EEEE')} – {selectedDateTasks.length} görev
                             </h3>
@@ -156,15 +157,43 @@ export const MonthPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* Detail Panel */}
-                <div className="w-80 m-4 ml-2">
-                    <TaskDetailPanel
-                        task={selectedTask}
-                        onClose={() => setSelectedTask(null)}
-                        onEdit={() => setEditingTask(selectedTask)}
-                        onDelete={handleDeleteTask}
-                        onStatusChange={handleStatusChange}
-                    />
+                {/* Detail Panel - Mobile: Overlay or Stacked? Stacked might be too tall. Let's make it an overlay/modal style on mobile or just stack if space permits.
+                   Actually, user said "design is useful on computer but not on mobile".
+                   A side panel on mobile usually pops up as a bottom sheet or full screen.
+                   For simplicity and speed, let's use the existing panel styling but position it differently or show it conditionally/overlay on mobile.
+                   
+                   Let's make it a fixed overlay on mobile when a task is selected.
+                */}
+                <div
+                    className={clsx(
+                        "transition-all duration-300 ease-in-out z-30",
+                        // Desktop: static width side panel
+                        "md:w-80 md:m-4 md:ml-2 md:static",
+                        // Mobile: fixed full screen or bottom sheet styling
+                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
+                    )}
+                    onClick={(e) => {
+                        // Close if clicking backdrop on mobile
+                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
+                            setSelectedTask(null);
+                        }
+                    }}
+                >
+                    <div className={clsx(
+                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
+                        // Mobile: Slide up/center or just standard panel
+                        "w-full h-full md:h-full md:w-80",
+                        // Mobile Padding/Margin adjustments
+                        "p-4 md:p-0"
+                    )}>
+                        <TaskDetailPanel
+                            task={selectedTask}
+                            onClose={() => setSelectedTask(null)}
+                            onEdit={() => setEditingTask(selectedTask)}
+                            onDelete={handleDeleteTask}
+                            onStatusChange={handleStatusChange}
+                        />
+                    </div>
                 </div>
             </div>
 

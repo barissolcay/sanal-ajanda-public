@@ -1,5 +1,6 @@
 // YearPage - Yearly overview
 import React, { useState, useMemo } from 'react';
+import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { YearCalendar } from '../components/calendar/YearCalendar';
@@ -98,20 +99,36 @@ export const YearPage: React.FC = () => {
                 onNewTask={() => setIsFormOpen(true)}
             />
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Year Calendar */}
-                <div className="flex-1 overflow-hidden glass-panel m-4 mr-2">
+                <div className="flex-1 overflow-hidden glass-panel m-2 md:m-4 md:mr-2">
                     <YearCalendar
                         date={currentDate}
-                        tasks={yearTasks}
+                        tasks={tasks}
                         weekStartsOn={settings.weekStartsOn}
                         selectedMonth={selectedMonth}
                         onMonthClick={handleMonthClick}
                     />
                 </div>
 
-                {/* Selected month tasks */}
-                <div className="w-80 m-4 ml-2 glass-panel flex flex-col overflow-hidden">
+                {/* Selected month tasks - Mobile: Overlay/Drawer style when selected */}
+                <div
+                    className={clsx(
+                        "transition-all duration-300 ease-in-out z-30",
+                        "md:w-80 md:m-4 md:ml-2 md:static glass-panel flex flex-col overflow-hidden",
+                        selectedMonth ? "fixed inset-0 bg-slate-950/95 md:bg-transparent z-50 md:z-auto" : "hidden md:flex md:w-0 md:m-0 md:opacity-0"
+                    )}
+                >
+                    {/* Mobile Close Button (only visible on mobile when open) */}
+                    <div className="md:hidden p-4 border-b border-slate-800/60 flex justify-end">
+                        <button
+                            onClick={() => setSelectedMonth(null)}
+                            className="text-slate-400 hover:text-white"
+                        >
+                            Kapat
+                        </button>
+                    </div>
+
                     {selectedMonth ? (
                         <>
                             <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
@@ -140,7 +157,7 @@ export const YearPage: React.FC = () => {
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-slate-500">
+                        <div className="flex-1 flex items-center justify-center text-slate-500 text-center p-4">
                             <p className="text-sm">Görevleri görmek için bir ay seçin</p>
                         </div>
                     )}

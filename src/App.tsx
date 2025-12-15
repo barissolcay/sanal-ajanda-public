@@ -6,6 +6,7 @@ import { AppRoutes } from './routes';
 import { supabase } from './lib/supabaseClient';
 import { LoginPage } from './pages/LoginPage';
 import { Session } from '@supabase/supabase-js';
+import { SidebarProvider } from './context/SidebarContext';
 
 const App: React.FC = () => {
     const [session, setSession] = useState<Session | null>(null);
@@ -43,9 +44,11 @@ const App: React.FC = () => {
 
     return (
         <BrowserRouter>
-            <AppShell>
-                <AppRoutes />
-            </AppShell>
+            <SidebarProvider>
+                <AppShell>
+                    <AppRoutes />
+                </AppShell>
+            </SidebarProvider>
         </BrowserRouter>
     );
 };

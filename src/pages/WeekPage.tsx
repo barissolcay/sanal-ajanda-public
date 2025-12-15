@@ -1,5 +1,6 @@
 // WeekPage - Weekly calendar view
 import React, { useState, useMemo } from 'react';
+import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { WeekCalendar } from '../components/calendar/WeekCalendar';
@@ -114,9 +115,9 @@ export const WeekPage: React.FC = () => {
                 onNewTask={() => setIsFormOpen(true)}
             />
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Calendar */}
-                <div className="flex-1 overflow-hidden glass-panel m-4 mr-2">
+                <div className="flex-1 overflow-hidden glass-panel m-2 md:m-4 md:mr-2">
                     <WeekCalendar
                         date={currentDate}
                         tasks={weekTasks}
@@ -127,15 +128,32 @@ export const WeekPage: React.FC = () => {
                     />
                 </div>
 
-                {/* Detail Panel */}
-                <div className="w-80 m-4 ml-2">
-                    <TaskDetailPanel
-                        task={selectedTask}
-                        onClose={() => setSelectedTask(null)}
-                        onEdit={() => setEditingTask(selectedTask)}
-                        onDelete={handleDeleteTask}
-                        onStatusChange={handleStatusChange}
-                    />
+                {/* Detail Panel - Mobile: Overlay */}
+                <div
+                    className={clsx(
+                        "transition-all duration-300 ease-in-out z-30",
+                        "md:w-80 md:m-4 md:ml-2 md:static block",
+                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
+                    )}
+                    onClick={(e) => {
+                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
+                            setSelectedTask(null);
+                        }
+                    }}
+                >
+                    <div className={clsx(
+                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
+                        "w-full h-full md:h-full md:w-80",
+                        "p-4 md:p-0"
+                    )}>
+                        <TaskDetailPanel
+                            task={selectedTask}
+                            onClose={() => setSelectedTask(null)}
+                            onEdit={() => setEditingTask(selectedTask)}
+                            onDelete={handleDeleteTask}
+                            onStatusChange={handleStatusChange}
+                        />
+                    </div>
                 </div>
             </div>
 

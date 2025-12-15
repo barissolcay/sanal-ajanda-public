@@ -22,6 +22,7 @@ import {
 import { useCategories } from '../../hooks/useCategories';
 import { supabase } from '../../lib/supabaseClient';
 import type { Category } from '../../domain/types';
+import { useSidebar } from '../../context/SidebarContext';
 
 interface NavItem {
     to: string;
@@ -96,12 +97,23 @@ const NavGroup: React.FC<{ title: string; items: NavItem[] }> = ({ title, items 
     </div>
 );
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+    className?: string;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     const { categories, loading } = useCategories();
+    const { isOpen, close } = useSidebar();
+    const location = useLocation();
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
+
+    // Close sidebar on route change (mobile)
+    React.useEffect(() => {
+        close();
+    }, [location.pathname]);
 
     // Convert categories to nav items
     const listItems: NavItem[] = categories.map((cat: Category) => ({
@@ -112,40 +124,63 @@ export const Sidebar: React.FC = () => {
     }));
 
     return (
-        <aside className="flex flex-col h-screen w-64 bg-slate-900/70 backdrop-blur-xl border-r border-slate-800/60 shadow-xl">
-            {/* Logo */}
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-800/60">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 shadow-lg">
-                    <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
-                        Sanal Ajandam
-                    </h1>
-                    <p className="text-xs text-slate-500">V2</p>
-                </div>
-            </div>
+        <>
+            {/* Mobile Overlay Backdrop */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden"
+                    onClick={close}
+                    aria-hidden="true"
+                />
+            )}
 
-            {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
-                <NavGroup title="Görünümler" items={viewItems} />
-                <NavGroup title="Listeler" items={loading ? [] : listItems} />
-                <NavGroup title="Diğer" items={otherItems} />
-            </nav>
+            {/* Sidebar Container */}
+            <aside
+                className={clsx(
+                    "flex flex-col h-screen w-64 bg-slate-900/90 backdrop-blur-xl border-r border-slate-800/60 shadow-xl transition-all duration-300 ease-in-out z-50",
+                    // Mobile positioning
+                    "fixed md:relative top-0 left-0",
+                    // Toggle visibility on mobile
+                    isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+                    className
+                )}
+            >
+                {/* Logo */}
+                <div className="flex items-center justify-between px-6 py-5 border-b border-slate-800/60">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 shadow-lg">
+                            <Sparkles className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+                                Sanal Ajandam
+                            </h1>
+                            <p className="text-xs text-slate-500">V2</p>
+                        </div>
+                    </div>
+                </div>
 
-            {/* Footer + Logout */}
-            <div className="px-4 py-4 border-t border-slate-800/60 flex flex-col gap-2">
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group"
-                >
-                    <LogOut size={16} className="group-hover:text-red-400 text-slate-500" />
-                    <span className="font-medium text-sm">Çıkış Yap</span>
-                </button>
-                <p className="text-xs text-slate-700 text-center mt-2">
-                    © 2025 Sanal Ajandam
-                </p>
-            </div>
-        </aside>
+                {/* Navigation */}
+                <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+                    <NavGroup title="Görünümler" items={viewItems} />
+                    <NavGroup title="Listeler" items={loading ? [] : listItems} />
+                    <NavGroup title="Diğer" items={otherItems} />
+                </nav>
+
+                {/* Footer + Logout */}
+                <div className="px-4 py-4 border-t border-slate-800/60 flex flex-col gap-2">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors group"
+                    >
+                        <LogOut size={16} className="group-hover:text-red-400 text-slate-500" />
+                        <span className="font-medium text-sm">Çıkış Yap</span>
+                    </button>
+                    <p className="text-xs text-slate-700 text-center mt-2">
+                        © 2025 Sanal Ajandam
+                    </p>
+                </div>
+            </aside>
+        </>
     );
 };

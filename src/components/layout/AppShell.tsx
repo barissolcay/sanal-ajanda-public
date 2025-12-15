@@ -16,11 +16,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
             {/* Layout */}
             <div className="relative z-10 flex h-screen">
-                {/* Sidebar */}
                 <Sidebar />
 
                 {/* Main Content */}
-                <main className="flex-1 flex flex-col overflow-hidden">
+                <main className="flex-1 flex flex-col overflow-hidden w-full">
                     {children}
                 </main>
             </div>

@@ -1,5 +1,6 @@
 // CompletedPage - Completed tasks view
 import React, { useState, useMemo } from 'react';
+import { clsx } from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -99,18 +100,18 @@ export const CompletedPage: React.FC = () => {
                 onSearchChange={setSearchQuery}
             />
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Main content */}
-                <div className="flex-1 flex flex-col overflow-hidden m-4 mr-2">
+                <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4 md:mr-2">
                     {/* Filter buttons */}
-                    <div className="flex gap-2 mb-4">
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 md:pb-0 md:flex-wrap no-scrollbar">
                         {filterOptions.map((option) => (
                             <button
                                 key={option.id}
                                 onClick={() => setDateFilter(option.id)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${dateFilter === option.id
-                                        ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg border border-indigo-400/40'
-                                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50 border border-transparent'
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${dateFilter === option.id
+                                    ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg border border-indigo-400/40'
+                                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50 border border-transparent'
                                     }`}
                             >
                                 {option.label}
@@ -130,15 +131,32 @@ export const CompletedPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Detail Panel */}
-                <div className="w-80 m-4 ml-2">
-                    <TaskDetailPanel
-                        task={selectedTask}
-                        onClose={() => setSelectedTask(null)}
-                        onEdit={() => setEditingTask(selectedTask)}
-                        onDelete={handleDeleteTask}
-                        onStatusChange={handleStatusChange}
-                    />
+                {/* Detail Panel - Mobile: Overlay */}
+                <div
+                    className={clsx(
+                        "transition-all duration-300 ease-in-out z-30",
+                        "md:w-80 md:m-4 md:ml-2 md:static block",
+                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
+                    )}
+                    onClick={(e) => {
+                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
+                            setSelectedTask(null);
+                        }
+                    }}
+                >
+                    <div className={clsx(
+                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
+                        "w-full h-full md:h-full md:w-80",
+                        "p-4 md:p-0"
+                    )}>
+                        <TaskDetailPanel
+                            task={selectedTask}
+                            onClose={() => setSelectedTask(null)}
+                            onEdit={() => setEditingTask(selectedTask)}
+                            onDelete={handleDeleteTask}
+                            onStatusChange={handleStatusChange}
+                        />
+                    </div>
                 </div>
             </div>
 
