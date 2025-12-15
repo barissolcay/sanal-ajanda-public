@@ -1,7 +1,7 @@
 // TaskCard Component
 import React from 'react';
 import { clsx } from 'clsx';
-import { Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
 import type { Task } from '../../domain/types';
@@ -32,14 +32,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         }
     };
 
-    const getBadgeVariant = (category: Task['category']) => {
-        switch (category) {
-            case 'reading': return 'success';
-            case 'watching': return 'purple';
-            case 'goal': return 'amber';
-            default: return 'default';
-        }
-    };
+    const badgeStyle = clsx(
+        categoryInfo.bgColor,
+        categoryInfo.color,
+        `border-${categoryInfo.color.replace('text-', '')}/40`
+    );
 
     return (
         <div
@@ -81,8 +78,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
                     {/* Priority indicator */}
                     {task.priority !== 0 && (
-                        <span className={clsx('text-sm', priorityInfo.color)}>
-                            {priorityInfo.icon}
+                        <span className={clsx('text-sm flex items-center', priorityInfo.color)}>
+                            {task.priority === 2 ? <AlertTriangle className="w-4 h-4" /> : priorityInfo.icon}
                         </span>
                     )}
                 </div>
@@ -111,7 +108,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
 
             {/* Category badge */}
-            <Badge variant={getBadgeVariant(task.category)}>
+            <Badge variant="custom" className={badgeStyle}>
                 {categoryInfo.label}
             </Badge>
         </div>

@@ -1,7 +1,9 @@
 // MonthCalendar Component - Monthly grid view
 import React from 'react';
 import { clsx } from 'clsx';
+import { AlertTriangle } from 'lucide-react';
 import type { Task } from '../../domain/types';
+import { CATEGORY_INFO } from '../../domain/types';
 import {
     getCalendarDays,
     formatDate,
@@ -43,12 +45,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     };
 
     const getCategoryDotColor = (category: Task['category']) => {
-        switch (category) {
-            case 'reading': return 'bg-emerald-400';
-            case 'watching': return 'bg-purple-400';
-            case 'goal': return 'bg-amber-400';
-            default: return 'bg-indigo-400';
-        }
+        const info = CATEGORY_INFO[category];
+        return info ? info.color.replace('text-', 'bg-').replace('300', '400') : 'bg-indigo-400';
     };
 
     return (
@@ -77,7 +75,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                 {calendarDays.map((day) => {
                     const isCurrentMonth = isSameMonth(day, date);
                     const isSelected = selectedDate && isSameDay(day, selectedDate);
-                    const dayTasks = getTasksForDay(day);
+                    const dayTasks = getTasksForDay(day).sort((a, b) =>
+                        (a.startTime || '').localeCompare(b.startTime || '')
+                    );
                     const hasOverdue = dayTasks.some(t => isOverdue(t));
 
                     // Group tasks by category for dots
@@ -116,24 +116,34 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
 
                             {/* Task indicators */}
                             <div className="flex-1 space-y-0.5 overflow-hidden">
-                                {dayTasks.slice(0, 3).map((task) => (
-                                    <div
-                                        key={task.id}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onTaskClick?.(task);
-                                        }}
-                                        className={clsx(
-                                            'px-1.5 py-0.5 rounded text-xs truncate cursor-pointer transition-colors',
-                                            task.status === 'done'
-                                                ? 'bg-slate-700/50 text-slate-500 line-through'
-                                                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80',
-                                            isOverdue(task) && task.status !== 'done' && 'border-l-2 border-red-500'
-                                        )}
-                                    >
-                                        {task.title}
-                                    </div>
-                                ))}
+                                {dayTasks.slice(0, 3).map((task) => {
+                                    const categoryInfo = CATEGORY_INFO[task.category];
+                                    return (
+                                        <div
+                                            key={task.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onTaskClick?.(task);
+                                            }}
+                                            className={clsx(
+                                                'px-1.5 py-0.5 rounded text-xs truncate cursor-pointer transition-colors border-l-2',
+                                                task.status === 'done'
+                                                    ? 'bg-slate-800/50 text-slate-500 line-through border-slate-600'
+                                                    : clsx(
+                                                        categoryInfo?.bgColor || 'bg-slate-800/80',
+                                                        categoryInfo?.color || 'text-slate-300',
+                                                        `border-${categoryInfo?.color.replace('text-', '')}/60`
+                                                    ),
+                                                isOverdue(task) && task.status !== 'done' && '!border-red-500'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-1 min-w-0">
+                                                {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />}
+                                                <span className="truncate">{task.title}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
 
                                 {dayTasks.length > 3 && (
                                     <p className="text-xs text-slate-500 px-1">

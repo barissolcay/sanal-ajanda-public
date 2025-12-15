@@ -1,6 +1,7 @@
 // DayCalendar Component - 24-hour timeline view
 import React, { useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { AlertTriangle } from 'lucide-react';
 import type { Task } from '../../domain/types';
 import {
     HOURS,
@@ -112,7 +113,10 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                     borderColor: (task as any).color
                                 } : undefined}
                             >
-                                {task.title}
+                                <div className="flex items-center gap-1">
+                                    {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                                    <span>{task.title}</span>
+                                </div>
                             </button>
                         ))}
                     </div>
@@ -156,12 +160,15 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                     )}
                                     style={getTaskStyle(task, top, height)}
                                 >
-                                    <p className={clsx(
-                                        'text-sm font-medium text-slate-100 truncate',
-                                        task.status === 'done' && 'line-through'
-                                    )}>
-                                        {task.title}
-                                    </p>
+                                    <div className="flex items-center gap-1 min-w-0">
+                                        {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                                        <span className={clsx(
+                                            'truncate',
+                                            task.status === 'done' && 'line-through'
+                                        )}>
+                                            {task.title}
+                                        </span>
+                                    </div>
                                     <p className="text-xs text-slate-400">
                                         {task.startTime} - {task.endTime}
                                     </p>

@@ -1,6 +1,7 @@
 // YearPage - Yearly overview
 import React, { useState, useMemo } from 'react';
 import { clsx } from 'clsx';
+import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { YearCalendar } from '../components/calendar/YearCalendar';
@@ -8,7 +9,7 @@ import { TaskList } from '../components/tasks/TaskList';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
-import { navigation, formatDate, getYearRange, getMonthRange, isTaskInRange } from '../domain/dateUtils';
+import { navigation, formatDate, getYearRange, getMonthRange, isTaskInRange, isSameMonth } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const YearPage: React.FC = () => {
@@ -47,7 +48,9 @@ export const YearPage: React.FC = () => {
     const selectedMonthTasks = useMemo(() => {
         if (!selectedMonth) return [];
         const monthRange = getMonthRange(selectedMonth);
-        return yearTasks.filter(task => isTaskInRange(task, monthRange.start, monthRange.end));
+        return yearTasks
+            .filter(task => isTaskInRange(task, monthRange.start, monthRange.end))
+            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
     }, [yearTasks, selectedMonth]);
 
     React.useEffect(() => {
@@ -59,7 +62,11 @@ export const YearPage: React.FC = () => {
     const handleToday = () => setCurrentDate(new Date());
 
     const handleMonthClick = (date: Date) => {
-        setSelectedMonth(date);
+        if (selectedMonth && isSameMonth(date, selectedMonth)) {
+            setSelectedMonth(null);
+        } else {
+            setSelectedMonth(date);
+        }
     };
 
     const handleGoToMonth = () => {
@@ -116,7 +123,7 @@ export const YearPage: React.FC = () => {
                     className={clsx(
                         "transition-all duration-300 ease-in-out z-30",
                         "md:w-80 md:m-4 md:ml-2 md:static glass-panel flex flex-col overflow-hidden",
-                        selectedMonth ? "fixed inset-0 bg-slate-950/95 md:bg-transparent z-50 md:z-auto" : "hidden md:flex md:w-0 md:m-0 md:opacity-0"
+                        selectedMonth ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent z-50 md:z-auto flex items-end md:block" : "hidden md:flex md:w-0 md:m-0 md:opacity-0"
                     )}
                 >
                     {/* Mobile Close Button (only visible on mobile when open) */}
@@ -140,12 +147,20 @@ export const YearPage: React.FC = () => {
                                         {selectedMonthTasks.length} görev
                                     </p>
                                 </div>
-                                <button
-                                    onClick={handleGoToMonth}
-                                    className="px-3 py-1.5 text-sm rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
-                                >
-                                    Aya Git
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleGoToMonth}
+                                        className="px-3 py-1.5 text-sm rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                                    >
+                                        Aya Git
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedMonth(null)}
+                                        className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4">
                                 <TaskList

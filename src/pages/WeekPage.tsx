@@ -133,7 +133,7 @@ export const WeekPage: React.FC = () => {
                     className={clsx(
                         "transition-all duration-300 ease-in-out z-30",
                         "md:w-80 md:m-4 md:ml-2 md:static block",
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
+                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none flex items-end md:block" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
                     )}
                     onClick={(e) => {
                         if (window.innerWidth < 768 && e.target === e.currentTarget) {

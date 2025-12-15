@@ -2,6 +2,8 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import type { Task } from '../../domain/types';
+import { CATEGORY_INFO } from '../../domain/types';
+import { AlertTriangle } from 'lucide-react';
 import {
     getWeekDays,
     formatDate,
@@ -36,12 +38,14 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     };
 
     const getCategoryColor = (category: Task['category']) => {
-        switch (category) {
-            case 'reading': return 'bg-emerald-500/30 border-emerald-500/60';
-            case 'watching': return 'bg-purple-500/30 border-purple-500/60';
-            case 'goal': return 'bg-amber-500/30 border-amber-500/60';
-            default: return 'bg-indigo-500/30 border-indigo-500/60';
-        }
+        const info = CATEGORY_INFO[category];
+        if (!info) return 'bg-indigo-500/30 border-indigo-500/60';
+        // Construct compatible classes based on the color in INFO 
+        // Note: CATEGORY_INFO has text colors (e.g. text-emerald-300) and bg colors (e.g. bg-emerald-500/20)
+        // We need border and bg for the calendar items.
+        // Let's rely on the predefined bg color from CATEGORY_INFO and add a border.
+
+        return `${info.bgColor} border-${info.color.replace('text-', '')}/50`;
     };
 
     return (
@@ -79,7 +83,9 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                 {weekDays.map((day) => {
                     const dayTasks = getTasksForDay(day);
                     const allDayTasks = dayTasks.filter(t => !hasTime(t));
-                    const timedTasks = dayTasks.filter(t => hasTime(t));
+                    const timedTasks = dayTasks
+                        .filter(t => hasTime(t))
+                        .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
 
                     return (
                         <div
@@ -104,7 +110,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                 isOverdue(task) && 'border-l-2 border-l-red-500'
                                             )}
                                         >
-                                            {task.title}
+                                            <div className="flex items-center gap-1 min-w-0">
+                                                {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                                                <span className="truncate">{task.title}</span>
+                                            </div>
                                         </button>
                                     ))}
                                     {allDayTasks.length > 3 && (
@@ -130,12 +139,15 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                         )}
                                     >
                                         <p className="text-xs text-slate-400">{formatTime(task.startTime!)}</p>
-                                        <p className={clsx(
-                                            'text-xs font-medium text-slate-200 truncate',
-                                            task.status === 'done' && 'line-through'
-                                        )}>
-                                            {task.title}
-                                        </p>
+                                        <div className="flex items-center gap-1 min-w-0">
+                                            {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                                            <p className={clsx(
+                                                'text-xs font-medium text-slate-200 truncate',
+                                                task.status === 'done' && 'line-through'
+                                            )}>
+                                                {task.title}
+                                            </p>
+                                        </div>
                                     </button>
                                 ))}
                             </div>

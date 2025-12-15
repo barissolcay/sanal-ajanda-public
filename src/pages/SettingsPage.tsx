@@ -294,9 +294,9 @@ export const SettingsPage: React.FC = () => {
                         <div className="space-y-2 text-sm text-slate-400">
                             <p><span className="text-slate-300">Uygulama:</span> Sanal Ajandam V2</p>
                             <p><span className="text-slate-300">Sürüm:</span> 1.0.0</p>
-                            <p><span className="text-slate-300">Depolama:</span> IndexedDB (Lokal)</p>
+                            <p><span className="text-slate-300">Depolama:</span> Lokal / Bulut (Supabase)</p>
                             <p className="pt-2 text-xs text-slate-500">
-                                Tüm verileriniz yerel olarak tarayıcınızda saklanır. Herhangi bir sunucuya veri gönderilmez.
+                                Verileriniz güvende ve senkronize.
                             </p>
                         </div>
                     </div>

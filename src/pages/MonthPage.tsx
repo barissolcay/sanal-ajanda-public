@@ -1,6 +1,7 @@
 // MonthPage - Monthly calendar view
 import React, { useState, useMemo } from 'react';
 import { clsx } from 'clsx';
+import { X } from 'lucide-react';
 import { TopBar } from '../components/nav/TopBar';
 import { MonthCalendar } from '../components/calendar/MonthCalendar';
 import { TaskList } from '../components/tasks/TaskList';
@@ -8,7 +9,7 @@ import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
-import { navigation, formatDate, getMonthRange, isTaskInRange, isTaskOnDate } from '../domain/dateUtils';
+import { navigation, formatDate, getMonthRange, isTaskInRange, isTaskOnDate, isSameDay } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const MonthPage: React.FC = () => {
@@ -47,7 +48,9 @@ export const MonthPage: React.FC = () => {
     // Tasks for selected date
     const selectedDateTasks = useMemo(() => {
         if (!selectedDate) return [];
-        return monthTasks.filter(task => isTaskOnDate(task, selectedDate));
+        return monthTasks
+            .filter(task => isTaskOnDate(task, selectedDate))
+            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
     }, [monthTasks, selectedDate]);
 
     React.useEffect(() => {
@@ -62,7 +65,11 @@ export const MonthPage: React.FC = () => {
     };
 
     const handleDayClick = (date: Date) => {
-        setSelectedDate(date);
+        if (selectedDate && isSameDay(date, selectedDate)) {
+            setSelectedDate(null);
+        } else {
+            setSelectedDate(date);
+        }
         setSelectedTask(null);
     };
 
@@ -140,10 +147,18 @@ export const MonthPage: React.FC = () => {
 
                     {/* Selected date tasks - Mobile: Always visible below calendar if date selected. Desktop: Below calendar */}
                     {selectedDate && (
-                        <div className="h-48 glass-panel p-4 overflow-hidden shrink-0">
-                            <h3 className="text-sm font-semibold text-slate-300 mb-3">
-                                {formatDate(selectedDate, 'd MMMM yyyy, EEEE')} – {selectedDateTasks.length} görev
-                            </h3>
+                        <div className="h-96 md:h-80 glass-panel p-4 overflow-hidden shrink-0 transition-height duration-300">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-semibold text-slate-300">
+                                    {formatDate(selectedDate, 'd MMMM yyyy, EEEE')} – {selectedDateTasks.length} görev
+                                </h3>
+                                <button
+                                    onClick={() => setSelectedDate(null)}
+                                    className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
                             <div className="overflow-y-auto h-[calc(100%-2rem)]">
                                 <TaskList
                                     tasks={selectedDateTasks}
@@ -170,7 +185,7 @@ export const MonthPage: React.FC = () => {
                         // Desktop: static width side panel
                         "md:w-80 md:m-4 md:ml-2 md:static",
                         // Mobile: fixed full screen or bottom sheet styling
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
+                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none flex items-end md:block" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
                     )}
                     onClick={(e) => {
                         // Close if clicking backdrop on mobile

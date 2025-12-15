@@ -12,6 +12,7 @@ import {
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { Task } from '../../domain/types';
+import { CATEGORY_INFO } from '../../domain/types';
 import { isTaskOnDate, isSameMonth, isToday } from '../../domain/dateUtils';
 
 export interface YearCalendarProps {
@@ -33,21 +34,18 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
 }) => {
     const yearStart = startOfYear(date);
 
-    const getTaskDensity = (day: Date): number => {
-        const count = tasks.filter(task => isTaskOnDate(task, day)).length;
-        if (count === 0) return 0;
-        if (count <= 2) return 1;
-        if (count <= 4) return 2;
-        return 3;
-    };
+    const getDayColor = (day: Date): string => {
+        const dayTasks = tasks.filter(task => isTaskOnDate(task, day));
+        if (dayTasks.length === 0) return '';
 
-    const getDensityColor = (density: number): string => {
-        switch (density) {
-            case 1: return 'bg-indigo-500/30';
-            case 2: return 'bg-indigo-500/50';
-            case 3: return 'bg-indigo-500/70';
-            default: return '';
-        }
+        // Use the category of the first task to color the cell
+        // Or if multiple, maybe prioritize? For now, first task is fine.
+        const category = dayTasks[0].category;
+        const info = CATEGORY_INFO[category];
+
+        // Use the bg color but with higher opacity for visibility in small cells
+        // CATEGORY_INFO has bg-color-500/20. We want something like bg-color-500/60
+        return info ? info.bgColor.replace('/20', '/60') : 'bg-slate-700';
     };
 
     return (
@@ -112,7 +110,6 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
 
                                     {/* Day cells */}
                                     {days.map((day) => {
-                                        const density = getTaskDensity(day);
                                         return (
                                             <div
                                                 key={day.toISOString()}
@@ -120,9 +117,7 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
                                                     'w-4 h-4 flex items-center justify-center text-[9px] rounded-sm',
                                                     isToday(day)
                                                         ? 'bg-cyan-500 text-white font-bold'
-                                                        : density > 0
-                                                            ? getDensityColor(density) + ' text-slate-200'
-                                                            : 'text-slate-500'
+                                                        : getDayColor(day) || 'text-slate-500'
                                                 )}
                                             >
                                                 {format(day, 'd')}
