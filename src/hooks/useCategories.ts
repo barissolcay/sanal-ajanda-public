@@ -4,6 +4,33 @@ import type { Category } from '../domain/types';
 import { DEFAULT_CATEGORIES } from '../domain/types';
 import * as categoryRepository from '../data/categoryRepository';
 
+const CATEGORIES_CACHE_KEY = 'sanal_ajandam_categories_cache';
+
+// localStorage'dan cache'lenmiş kategorileri yükle
+function getCachedCategories(): Category[] {
+    try {
+        const cached = localStorage.getItem(CATEGORIES_CACHE_KEY);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to parse cached categories:', e);
+    }
+    return DEFAULT_CATEGORIES;
+}
+
+// Kategorileri localStorage'a kaydet
+function cacheCategories(categories: Category[]): void {
+    try {
+        localStorage.setItem(CATEGORIES_CACHE_KEY, JSON.stringify(categories));
+    } catch (e) {
+        console.warn('Failed to cache categories:', e);
+    }
+}
+
 export interface UseCategoriesReturn {
     categories: Category[];
     loading: boolean;
@@ -17,8 +44,8 @@ export interface UseCategoriesReturn {
 }
 
 export function useCategories(): UseCategoriesReturn {
-    // Loading sırasında DEFAULT_CATEGORIES göster, sonra DB'den güncel veri gelir
-    const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+    // Önce localStorage cache'den yükle, yoksa DEFAULT_CATEGORIES kullan
+    const [categories, setCategories] = useState<Category[]>(getCachedCategories);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
@@ -29,8 +56,11 @@ export function useCategories(): UseCategoriesReturn {
             setError(null);
             const loaded = await categoryRepository.getAllCategories();
             setCategories(loaded);
+            // Başarılı yüklemeden sonra cache'e kaydet
+            cacheCategories(loaded);
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to load categories'));
+            // Hata durumunda cache'den yüklenmiş veriyi koru
         } finally {
             setLoading(false);
         }
