@@ -38,13 +38,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     };
 
     const getCategoryColor = (category: Task['category']) => {
-        const info = CATEGORY_INFO[category];
-        if (!info) return 'bg-indigo-500/30 border-indigo-500/60';
-        // Construct compatible classes based on the color in INFO 
-        // Note: CATEGORY_INFO has text colors (e.g. text-emerald-300) and bg colors (e.g. bg-emerald-500/20)
-        // We need border and bg for the calendar items.
-        // Let's rely on the predefined bg color from CATEGORY_INFO and add a border.
-
+        const info = CATEGORY_INFO[category] || {
+            bgColor: 'bg-slate-500/20',
+            color: 'text-slate-300'
+        };
         return `${info.bgColor} border-${info.color.replace('text-', '')}/50`;
     };
 

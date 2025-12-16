@@ -1,6 +1,7 @@
 // useCategories Hook - Category management for React components
 import { useState, useEffect, useCallback } from 'react';
 import type { Category } from '../domain/types';
+import { DEFAULT_CATEGORIES } from '../domain/types';
 import * as categoryRepository from '../data/categoryRepository';
 
 export interface UseCategoriesReturn {
@@ -16,9 +17,8 @@ export interface UseCategoriesReturn {
 }
 
 export function useCategories(): UseCategoriesReturn {
-    // Başlangıçta boş array kullan - flicker'ı önler
-    // Repository'den gelen veriler yüklenene kadar loading durumunda kalacak
-    const [categories, setCategories] = useState<Category[]>([]);
+    // Loading sırasında DEFAULT_CATEGORIES göster, sonra DB'den güncel veri gelir
+    const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 

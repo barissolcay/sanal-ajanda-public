@@ -7,6 +7,7 @@ import { Badge } from '../ui/Badge';
 import type { Task } from '../../domain/types';
 import { CATEGORY_INFO, PRIORITY_INFO } from '../../domain/types';
 import { formatDateRange, formatTimeRange, isOverdue, hasTime } from '../../domain/dateUtils';
+import { useCategories } from '../../hooks/useCategories';
 
 export interface TaskCardProps {
     task: Task;
@@ -21,8 +22,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     onClick,
     onStatusChange,
 }) => {
+    const { getCategoryById } = useCategories();
     const overdue = isOverdue(task);
-    const categoryInfo = CATEGORY_INFO[task.category];
+
+    // Önce dinamik kategorilerden bak, yoksa CATEGORY_INFO'dan al
+    const dynamicCategory = getCategoryById(task.category);
+    const categoryInfo = CATEGORY_INFO[task.category] || {
+        label: dynamicCategory?.name || task.category,
+        color: 'text-slate-300',
+        bgColor: 'bg-slate-500/20'
+    };
+    // Eğer dinamik kategori varsa, label'ı güncelle
+    if (dynamicCategory && !CATEGORY_INFO[task.category]) {
+        categoryInfo.label = dynamicCategory.name;
+    }
+
     const priorityInfo = PRIORITY_INFO[task.priority];
     const showTime = hasTime(task);
 

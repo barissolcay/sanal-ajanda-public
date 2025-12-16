@@ -39,13 +39,11 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
         if (dayTasks.length === 0) return '';
 
         // Use the category of the first task to color the cell
-        // Or if multiple, maybe prioritize? For now, first task is fine.
         const category = dayTasks[0].category;
-        const info = CATEGORY_INFO[category];
+        const info = CATEGORY_INFO[category] || { bgColor: 'bg-slate-500/20' };
 
         // Use the bg color but with higher opacity for visibility in small cells
-        // CATEGORY_INFO has bg-color-500/20. We want something like bg-color-500/60
-        return info ? info.bgColor.replace('/20', '/60') : 'bg-slate-700';
+        return info.bgColor.replace('/20', '/60');
     };
 
     return (

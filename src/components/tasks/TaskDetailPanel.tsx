@@ -20,6 +20,7 @@ import { Badge } from '../ui/Badge';
 import type { Task, TaskStatus } from '../../domain/types';
 import { CATEGORY_INFO, PRIORITY_INFO, STATUS_INFO } from '../../domain/types';
 import { formatDateRange, formatTimeRange, isOverdue } from '../../domain/dateUtils';
+import { useCategories } from '../../hooks/useCategories';
 
 export interface TaskDetailPanelProps {
     task: Task | null;
@@ -43,6 +44,8 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     onDelete,
     onStatusChange,
 }) => {
+    const { getCategoryById } = useCategories();
+
     if (!task) {
         return (
             <div className="flex-1 flex items-center justify-center text-slate-500">
@@ -55,7 +58,17 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     const overdue = isOverdue(task);
-    const categoryInfo = CATEGORY_INFO[task.category];
+    // Dinamik kategorilerden adı al
+    const dynamicCategory = getCategoryById(task.category);
+    const categoryInfo = CATEGORY_INFO[task.category] || {
+        label: dynamicCategory?.name || task.category,
+        color: 'text-slate-300',
+        bgColor: 'bg-slate-500/20'
+    };
+    // Eğer dinamik kategori varsa ve CATEGORY_INFO'da yoksa, adını kullan
+    if (dynamicCategory && !CATEGORY_INFO[task.category]) {
+        categoryInfo.label = dynamicCategory.name;
+    }
     const priorityInfo = PRIORITY_INFO[task.priority];
     const statusInfo = STATUS_INFO[task.status];
 

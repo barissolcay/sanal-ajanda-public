@@ -45,8 +45,8 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     };
 
     const getCategoryDotColor = (category: Task['category']) => {
-        const info = CATEGORY_INFO[category];
-        return info ? info.color.replace('text-', 'bg-').replace('300', '400') : 'bg-indigo-400';
+        const info = CATEGORY_INFO[category] || { color: 'text-slate-300' };
+        return info.color.replace('text-', 'bg-').replace('300', '400');
     };
 
     return (
@@ -117,7 +117,10 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                             {/* Task indicators */}
                             <div className="flex-1 space-y-0.5 overflow-hidden">
                                 {dayTasks.slice(0, 3).map((task) => {
-                                    const categoryInfo = CATEGORY_INFO[task.category];
+                                    const categoryInfo = CATEGORY_INFO[task.category] || {
+                                        bgColor: 'bg-slate-500/20',
+                                        color: 'text-slate-300'
+                                    };
                                     return (
                                         <div
                                             key={task.id}
