@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { AlertTriangle } from 'lucide-react';
 import type { Task } from '../../domain/types';
+import { useCategories } from '../../hooks/useCategories';
 import {
     HOURS,
     formatHour,
@@ -31,6 +32,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
     onTaskClick,
     selectedTaskId,
 }) => {
+    const { getCategoryColor } = useCategories();
     const timelineRef = useRef<HTMLDivElement>(null);
     const range = getDayRange(date);
     const filteredTasks = tasks.filter(task => isTaskInRange(task, range.start, range.end));
@@ -60,27 +62,15 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
         };
     };
 
-    const getCategoryColor = (category: Task['category'], taskColor?: string) => {
-        // If task has custom color, use it
-        if (taskColor) {
-            return `border-2`;
-        }
-        // Otherwise use category colors
-        switch (category) {
-            case 'reading': return 'bg-emerald-500/30 border-emerald-500/60 hover:bg-emerald-500/40';
-            case 'watching': return 'bg-purple-500/30 border-purple-500/60 hover:bg-purple-500/40';
-            case 'goal': return 'bg-amber-500/30 border-amber-500/60 hover:bg-amber-500/40';
-            default: return 'bg-indigo-500/30 border-indigo-500/60 hover:bg-indigo-500/40';
-        }
-    };
-
-    const getTaskStyle = (task: Task, top: number, height: number) => {
-        const baseStyle: React.CSSProperties = { top, height: Math.max(height, 30) };
-        if ((task as any).color) {
-            baseStyle.backgroundColor = `${(task as any).color}40`;
-            baseStyle.borderColor = (task as any).color;
-        }
-        return baseStyle;
+    // Get task style with proper color handling
+    const getTaskStyle = (task: Task, top: number, height: number): React.CSSProperties => {
+        const color = task.color || getCategoryColor(task.category);
+        return {
+            top,
+            height: Math.max(height, 30),
+            backgroundColor: `${color}40`,
+            borderColor: color,
+        };
     };
 
     return (
@@ -97,28 +87,30 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                 <div className="px-4 py-3 border-b border-slate-800/60 bg-slate-900/30">
                     <h3 className="text-xs font-medium text-slate-500 uppercase mb-2">Tüm Gün</h3>
                     <div className="flex flex-wrap gap-2">
-                        {allDayTasks.map(task => (
-                            <button
-                                key={task.id}
-                                onClick={() => onTaskClick?.(task)}
-                                className={clsx(
-                                    'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all',
-                                    getCategoryColor(task.category, (task as any).color),
-                                    selectedTaskId === task.id && 'ring-2 ring-indigo-500/50',
-                                    task.status === 'done' && 'opacity-50 line-through',
-                                    isOverdue(task) && 'border-red-500/60'
-                                )}
-                                style={(task as any).color ? {
-                                    backgroundColor: `${(task as any).color}40`,
-                                    borderColor: (task as any).color
-                                } : undefined}
-                            >
-                                <div className="flex items-center gap-1">
-                                    {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
-                                    <span>{task.title}</span>
-                                </div>
-                            </button>
-                        ))}
+                        {allDayTasks.map(task => {
+                            const color = task.color || getCategoryColor(task.category);
+                            return (
+                                <button
+                                    key={task.id}
+                                    onClick={() => onTaskClick?.(task)}
+                                    className={clsx(
+                                        'px-3 py-1.5 rounded-lg text-sm font-medium border-2 transition-all',
+                                        selectedTaskId === task.id && 'ring-2 ring-indigo-500/50',
+                                        task.status === 'done' && 'opacity-50 line-through',
+                                        isOverdue(task) && 'border-red-500/60'
+                                    )}
+                                    style={{
+                                        backgroundColor: `${color}40`,
+                                        borderColor: color
+                                    }}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />}
+                                        <span>{task.title}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -152,8 +144,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                     key={task.id}
                                     onClick={() => onTaskClick?.(task)}
                                     className={clsx(
-                                        'absolute left-0 right-0 mx-1 px-3 py-1 rounded-lg border text-left overflow-hidden transition-all',
-                                        getCategoryColor(task.category, (task as any).color),
+                                        'absolute left-0 right-0 mx-1 px-3 py-1 rounded-lg border-2 text-left overflow-hidden transition-all',
                                         selectedTaskId === task.id && 'ring-2 ring-indigo-500/50',
                                         task.status === 'done' && 'opacity-50',
                                         isOverdue(task) && 'border-l-4 border-l-red-500'

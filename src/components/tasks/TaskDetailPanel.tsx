@@ -18,7 +18,7 @@ import {
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import type { Task, TaskStatus } from '../../domain/types';
-import { CATEGORY_INFO, PRIORITY_INFO, STATUS_INFO } from '../../domain/types';
+import { PRIORITY_INFO, STATUS_INFO } from '../../domain/types';
 import { formatDateRange, formatTimeRange, isOverdue } from '../../domain/dateUtils';
 import { useCategories } from '../../hooks/useCategories';
 
@@ -59,21 +59,13 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
     const overdue = isOverdue(task);
     // Dinamik kategorilerden adı al
-    const dynamicCategory = getCategoryById(task.category);
-    const categoryInfo = CATEGORY_INFO[task.category] || {
-        label: dynamicCategory?.name || task.category,
-        color: 'text-slate-300',
-        bgColor: 'bg-slate-500/20'
-    };
-    // Eğer dinamik kategori varsa ve CATEGORY_INFO'da yoksa, adını kullan
-    if (dynamicCategory && !CATEGORY_INFO[task.category]) {
-        categoryInfo.label = dynamicCategory.name;
-    }
+    const category = getCategoryById(task.category);
+    const categoryLabel = category?.name || task.category;
     const priorityInfo = PRIORITY_INFO[task.priority];
     const statusInfo = STATUS_INFO[task.status];
 
-    const getBadgeVariant = (category: Task['category']) => {
-        switch (category) {
+    const getBadgeVariant = (categoryId: Task['category']) => {
+        switch (categoryId) {
             case 'reading': return 'success';
             case 'watching': return 'purple';
             case 'goal': return 'amber';
@@ -94,7 +86,7 @@ export const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
                     </h2>
                     <div className="flex items-center gap-2 mt-2">
                         <Badge variant={getBadgeVariant(task.category)}>
-                            {categoryInfo.label}
+                            {categoryLabel}
                         </Badge>
                         <span className={clsx('text-sm', statusInfo.color)}>
                             {statusInfo.label}

@@ -5,7 +5,7 @@ import { Clock, Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
 import type { Task } from '../../domain/types';
-import { CATEGORY_INFO, PRIORITY_INFO } from '../../domain/types';
+import { PRIORITY_INFO } from '../../domain/types';
 import { formatDateRange, formatTimeRange, isOverdue, hasTime } from '../../domain/dateUtils';
 import { useCategories } from '../../hooks/useCategories';
 
@@ -22,20 +22,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     onClick,
     onStatusChange,
 }) => {
-    const { getCategoryById } = useCategories();
+    const { getCategoryById, getCategoryColor } = useCategories();
     const overdue = isOverdue(task);
 
-    // Önce dinamik kategorilerden bak, yoksa CATEGORY_INFO'dan al
-    const dynamicCategory = getCategoryById(task.category);
-    const categoryInfo = CATEGORY_INFO[task.category] || {
-        label: dynamicCategory?.name || task.category,
-        color: 'text-slate-300',
-        bgColor: 'bg-slate-500/20'
-    };
-    // Eğer dinamik kategori varsa, label'ı güncelle
-    if (dynamicCategory && !CATEGORY_INFO[task.category]) {
-        categoryInfo.label = dynamicCategory.name;
-    }
+    // Dinamik kategorilerden bilgi al
+    const category = getCategoryById(task.category);
+    const categoryLabel = category?.name || task.category;
+    const categoryColor = task.color || getCategoryColor(task.category);
 
     const priorityInfo = PRIORITY_INFO[task.priority];
     const showTime = hasTime(task);
@@ -46,11 +39,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         }
     };
 
-    const badgeStyle = clsx(
-        categoryInfo.bgColor,
-        categoryInfo.color,
-        `border-${categoryInfo.color.replace('text-', '')}/40`
-    );
+    const badgeStyle: React.CSSProperties = {
+        backgroundColor: `${categoryColor}20`,
+        borderColor: `${categoryColor}40`,
+        color: categoryColor,
+    };
 
     return (
         <div
@@ -122,8 +115,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
 
             {/* Category badge */}
-            <Badge variant="custom" className={badgeStyle}>
-                {categoryInfo.label}
+            <Badge variant="custom" className="border" style={badgeStyle}>
+                {categoryLabel}
             </Badge>
         </div>
     );

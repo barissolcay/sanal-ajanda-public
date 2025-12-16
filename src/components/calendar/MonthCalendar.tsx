@@ -3,7 +3,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { AlertTriangle } from 'lucide-react';
 import type { Task } from '../../domain/types';
-import { CATEGORY_INFO } from '../../domain/types';
+import { useCategories } from '../../hooks/useCategories';
 import {
     getCalendarDays,
     formatDate,
@@ -33,6 +33,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     onDayClick,
     onTaskClick,
 }) => {
+    const { getCategoryColor } = useCategories();
     const calendarDays = getCalendarDays(date, weekStartsOn);
 
     // Reorder day names based on weekStartsOn
@@ -44,9 +45,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
         return tasks.filter(task => isTaskOnDate(task, day));
     };
 
-    const getCategoryDotColor = (category: Task['category']) => {
-        const info = CATEGORY_INFO[category] || { color: 'text-slate-300' };
-        return info.color.replace('text-', 'bg-').replace('300', '400');
+    // Get task style based on category color
+    const getTaskStyle = (task: Task) => {
+        const color = task.color || getCategoryColor(task.category);
+        return {
+            backgroundColor: `${color}20`,
+            borderLeftColor: color,
+            color: color,
+        };
     };
 
     return (
@@ -79,9 +85,6 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                         (a.startTime || '').localeCompare(b.startTime || '')
                     );
                     const hasOverdue = dayTasks.some(t => isOverdue(t));
-
-                    // Group tasks by category for dots
-                    const categories = [...new Set(dayTasks.map(t => t.category))];
 
                     return (
                         <button
@@ -117,10 +120,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                             {/* Task indicators */}
                             <div className="flex-1 space-y-0.5 overflow-hidden">
                                 {dayTasks.slice(0, 3).map((task) => {
-                                    const categoryInfo = CATEGORY_INFO[task.category] || {
-                                        bgColor: 'bg-slate-500/20',
-                                        color: 'text-slate-300'
-                                    };
+                                    const taskStyle = getTaskStyle(task);
                                     return (
                                         <div
                                             key={task.id}
@@ -130,15 +130,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                             }}
                                             className={clsx(
                                                 'px-1.5 py-0.5 rounded text-xs truncate cursor-pointer transition-colors border-l-2',
-                                                task.status === 'done'
-                                                    ? 'bg-slate-800/50 text-slate-500 line-through border-slate-600'
-                                                    : clsx(
-                                                        categoryInfo.bgColor,
-                                                        categoryInfo.color,
-                                                        `border-${categoryInfo.color.replace('text-', '')}/60`
-                                                    ),
-                                                isOverdue(task) && task.status !== 'done' && '!border-red-500'
+                                                task.status === 'done' && 'opacity-50 line-through',
+                                                isOverdue(task) && task.status !== 'done' && '!border-l-red-500'
                                             )}
+                                            style={{
+                                                backgroundColor: task.status === 'done' ? 'rgba(30, 41, 59, 0.5)' : taskStyle.backgroundColor,
+                                                borderLeftColor: isOverdue(task) && task.status !== 'done' ? '#ef4444' : taskStyle.borderLeftColor,
+                                                color: task.status === 'done' ? '#64748b' : undefined,
+                                            }}
                                         >
                                             <div className="flex items-center gap-1 min-w-0">
                                                 {task.priority === 2 && <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />}
@@ -154,18 +153,6 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                     </p>
                                 )}
                             </div>
-
-                            {/* Category dots (if no task previews shown) */}
-                            {dayTasks.length === 0 && categories.length > 0 && (
-                                <div className="flex gap-1 mt-auto">
-                                    {categories.slice(0, 4).map((cat, i) => (
-                                        <span
-                                            key={i}
-                                            className={clsx('w-1.5 h-1.5 rounded-full', getCategoryDotColor(cat))}
-                                        />
-                                    ))}
-                                </div>
-                            )}
                         </button>
                     );
                 })}

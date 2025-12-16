@@ -12,7 +12,7 @@ import {
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { Task } from '../../domain/types';
-import { CATEGORY_INFO } from '../../domain/types';
+import { useCategories } from '../../hooks/useCategories';
 import { isTaskOnDate, isSameMonth, isToday } from '../../domain/dateUtils';
 
 export interface YearCalendarProps {
@@ -32,18 +32,21 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
     selectedMonth,
     onMonthClick,
 }) => {
+    const { getCategoryColor } = useCategories();
     const yearStart = startOfYear(date);
 
-    const getDayColor = (day: Date): string => {
+    const getDayStyle = (day: Date): React.CSSProperties | undefined => {
         const dayTasks = tasks.filter(task => isTaskOnDate(task, day));
-        if (dayTasks.length === 0) return '';
+        if (dayTasks.length === 0) return undefined;
 
-        // Use the category of the first task to color the cell
-        const category = dayTasks[0].category;
-        const info = CATEGORY_INFO[category] || { bgColor: 'bg-slate-500/20' };
+        // Use the first task's category color
+        const firstTask = dayTasks[0];
+        const color = firstTask.color || getCategoryColor(firstTask.category);
 
-        // Use the bg color but with higher opacity for visibility in small cells
-        return info.bgColor.replace('/20', '/60');
+        return {
+            backgroundColor: `${color}60`,
+            color: '#fff',
+        };
     };
 
     return (
@@ -108,6 +111,7 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
 
                                     {/* Day cells */}
                                     {days.map((day) => {
+                                        const dayStyle = getDayStyle(day);
                                         return (
                                             <div
                                                 key={day.toISOString()}
@@ -115,8 +119,9 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
                                                     'w-4 h-4 flex items-center justify-center text-[9px] rounded-sm',
                                                     isToday(day)
                                                         ? 'bg-cyan-500 text-white font-bold'
-                                                        : getDayColor(day) || 'text-slate-500'
+                                                        : !dayStyle && 'text-slate-500'
                                                 )}
+                                                style={!isToday(day) ? dayStyle : undefined}
                                             >
                                                 {format(day, 'd')}
                                             </div>

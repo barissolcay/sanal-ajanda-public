@@ -31,6 +31,14 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
 
     const { showCompleted = true, category, status } = options;
 
+    // Helper to check if task matches current filters
+    const matchesFilters = useCallback((task: Task): boolean => {
+        if (!showCompleted && task.status === 'done') return false;
+        if (category && task.category !== category) return false;
+        if (status && task.status !== status) return false;
+        return true;
+    }, [showCompleted, category, status]);
+
     // Load all tasks
     const loadTasks = useCallback(async () => {
         try {
@@ -62,39 +70,94 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         loadTasks();
     }, [loadTasks]);
 
-    // Create task
+    // Create task with optimistic update
     const createTask = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-        const newTask = await taskRepository.createTask(taskData);
-        await loadTasks(); // Refresh to apply filters
-        return newTask;
-    }, [loadTasks]);
+        try {
+            const newTask = await taskRepository.createTask(taskData);
 
-    // Update task
+            // Optimistic update - only add if it matches filters
+            if (matchesFilters(newTask)) {
+                setTasks(prev => [...prev, newTask].sort((a, b) =>
+                    a.startDate.localeCompare(b.startDate)
+                ));
+            }
+
+            return newTask;
+        } catch (err) {
+            // On error, refetch to ensure consistency
+            await loadTasks();
+            throw err;
+        }
+    }, [matchesFilters, loadTasks]);
+
+    // Update task with optimistic update
     const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
-        const updated = await taskRepository.updateTask(id, updates);
-        if (updated) {
+        try {
+            const updated = await taskRepository.updateTask(id, updates);
+            if (updated) {
+                setTasks(prev => {
+                    // Check if updated task still matches filters
+                    if (!matchesFilters(updated)) {
+                        return prev.filter(t => t.id !== id);
+                    }
+                    return prev.map(t => t.id === id ? updated : t);
+                });
+            }
+            return updated;
+        } catch (err) {
             await loadTasks();
+            throw err;
         }
-        return updated;
-    }, [loadTasks]);
+    }, [matchesFilters, loadTasks]);
 
-    // Delete task
+    // Delete task with optimistic update
     const deleteTask = useCallback(async (id: string) => {
-        const result = await taskRepository.deleteTask(id);
-        if (result) {
+        try {
+            // Optimistic update - remove immediately
+            setTasks(prev => prev.filter(t => t.id !== id));
+
+            const result = await taskRepository.deleteTask(id);
+            if (!result) {
+                // If delete failed, refetch
+                await loadTasks();
+            }
+            return result;
+        } catch (err) {
             await loadTasks();
+            throw err;
         }
-        return result;
     }, [loadTasks]);
 
-    // Update task status
+    // Update task status with optimistic update
     const updateTaskStatus = useCallback(async (id: string, newStatus: TaskStatus) => {
-        const updated = await taskRepository.updateTaskStatus(id, newStatus);
-        if (updated) {
+        // Find the task first for optimistic update
+        const taskToUpdate = tasks.find(t => t.id === id);
+
+        try {
+            // Optimistic update
+            if (taskToUpdate) {
+                const optimisticTask = { ...taskToUpdate, status: newStatus };
+                if (!matchesFilters(optimisticTask)) {
+                    // If it won't match filters after update, remove it
+                    setTasks(prev => prev.filter(t => t.id !== id));
+                } else {
+                    setTasks(prev => prev.map(t => t.id === id ? optimisticTask : t));
+                }
+            }
+
+            const updated = await taskRepository.updateTaskStatus(id, newStatus);
+
+            // Sync with actual response
+            if (updated && matchesFilters(updated)) {
+                setTasks(prev => prev.map(t => t.id === id ? updated : t));
+            }
+
+            return updated;
+        } catch (err) {
             await loadTasks();
+            throw err;
         }
-        return updated;
-    }, [loadTasks]);
+    }, [tasks, matchesFilters, loadTasks]);
 
     // Get tasks in date range (client-side filtering for precision)
     const getTasksInRange = useCallback((start: Date, end: Date) => {

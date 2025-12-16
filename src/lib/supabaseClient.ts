@@ -1,16 +1,39 @@
+// Supabase Client Configuration
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-import { createClient } from '@supabase/supabase-js';
-
-// Environment variables should be defined in .env
-// VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase URL or Anon Key is missing. Please check your .env file.');
+// Validate configuration
+function validateConfig(): void {
+    if (!supabaseUrl || !supabaseAnonKey) {
+        const missing = [];
+        if (!supabaseUrl) missing.push('VITE_SUPABASE_URL');
+        if (!supabaseAnonKey) missing.push('VITE_SUPABASE_ANON_KEY');
+
+        throw new Error(
+            `Supabase yapılandırması eksik!\n` +
+            `Eksik değişkenler: ${missing.join(', ')}\n` +
+            `Lütfen .env dosyasında bu değişkenleri tanımlayın.`
+        );
+    }
 }
 
-export const supabase = createClient(
-    supabaseUrl || '',
-    supabaseAnonKey || ''
+// Validate on module load
+validateConfig();
+
+export const supabase: SupabaseClient = createClient(
+    supabaseUrl!,
+    supabaseAnonKey!,
+    {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+        },
+    }
 );
+
+// Development mode logging
+if (import.meta.env.DEV) {
+    console.log('[Supabase] Bağlantı hazır:', supabaseUrl);
+}

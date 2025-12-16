@@ -104,12 +104,3 @@ export function getCategoryColor(categories: Category[], categoryId: string): st
 
 // Legacy support - keep for backward compatibility during migration
 export type TaskCategory = DefaultCategoryId | string;
-
-// Legacy CATEGORY_INFO - kept for backward compatibility
-export const CATEGORY_INFO: Record<string, { label: string; color: string; bgColor: string }> = {
-    general: { label: 'Genel', color: 'text-slate-300', bgColor: 'bg-slate-500/20' },
-    reading: { label: 'Okuma', color: 'text-emerald-300', bgColor: 'bg-emerald-500/20' },
-    watching: { label: 'İzleme', color: 'text-purple-300', bgColor: 'bg-purple-500/20' },
-    goal: { label: 'Hedef', color: 'text-amber-300', bgColor: 'bg-amber-500/20' },
-    travel: { label: 'Gezme', color: 'text-cyan-300', bgColor: 'bg-cyan-500/20' },
-};

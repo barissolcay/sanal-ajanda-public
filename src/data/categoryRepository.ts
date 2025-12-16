@@ -3,12 +3,20 @@ import { supabase } from '../lib/supabaseClient';
 import type { Category } from '../domain/types';
 import { DEFAULT_CATEGORIES } from '../domain/types';
 
+// Session-based cache to prevent repeated default checks
+let defaultsInitializedForUser: string | null = null;
+
 // Helper to get current user ID
 async function getCurrentUserId(): Promise<string> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     return user.id;
 }
+
+// Reset cache when auth state changes
+supabase.auth.onAuthStateChange(() => {
+    defaultsInitializedForUser = null;
+});
 
 // Helper to ensure defaults exist in DB
 // Bu fonksiyon her varsayılan kategoriyi tek tek kontrol eder ve eksik olanları ekler
@@ -49,9 +57,19 @@ async function ensureDefaultsExist(userId: string): Promise<void> {
             console.error('Failed to insert missing default categories:', insertError);
             throw insertError;
         }
-
-        console.log(`Inserted ${missingDefaults.length} missing default categories`);
     }
+}
+
+// Map DB to Domain
+function mapToDomain(item: any): Category {
+    return {
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        color: item.color,
+        isDefault: item.is_default,
+        order: item.order
+    };
 }
 
 /**
@@ -61,8 +79,11 @@ export async function getAllCategories(): Promise<Category[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return DEFAULT_CATEGORIES;
 
-    // Varsayılan kategorilerin DB'de olduğundan emin ol
-    await ensureDefaultsExist(user.id);
+    // Sadece ilk seferde kontrol et (session başına, kullanıcı bazlı)
+    if (defaultsInitializedForUser !== user.id) {
+        await ensureDefaultsExist(user.id);
+        defaultsInitializedForUser = user.id;
+    }
 
     const { data, error } = await supabase
         .from('categories')
@@ -77,19 +98,10 @@ export async function getAllCategories(): Promise<Category[]> {
 
     // ensureDefaultsExist çağrıldı, bu yüzden data her zaman dolu olmalı
     if (!data || data.length === 0) {
-        console.warn('No categories found after ensuring defaults, returning defaults');
         return DEFAULT_CATEGORIES;
     }
 
-    // Map DB to Domain
-    return data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        icon: item.icon,
-        color: item.color,
-        isDefault: item.is_default, // map snake_case
-        order: item.order
-    }));
+    return data.map(mapToDomain);
 }
 
 /**

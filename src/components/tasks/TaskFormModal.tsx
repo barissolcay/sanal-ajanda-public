@@ -112,6 +112,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             newErrors.endDate = 'Bitiş tarihi başlangıçtan önce olamaz';
         }
 
+        // Time validation: if same day, check if end time is after start time
+        const isSameDay = !formData.endDate || formData.startDate === formData.endDate;
+        if (isSameDay && formData.startTime && formData.endTime) {
+            if (formData.startTime > formData.endTime) {
+                newErrors.endTime = 'Bitiş saati başlangıç saatinden önce olamaz';
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
