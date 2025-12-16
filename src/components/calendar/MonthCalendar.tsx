@@ -133,9 +133,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                                 task.status === 'done'
                                                     ? 'bg-slate-800/50 text-slate-500 line-through border-slate-600'
                                                     : clsx(
-                                                        categoryInfo?.bgColor || 'bg-slate-800/80',
-                                                        categoryInfo?.color || 'text-slate-300',
-                                                        `border-${categoryInfo?.color.replace('text-', '')}/60`
+                                                        categoryInfo.bgColor,
+                                                        categoryInfo.color,
+                                                        `border-${categoryInfo.color.replace('text-', '')}/60`
                                                     ),
                                                 isOverdue(task) && task.status !== 'done' && '!border-red-500'
                                             )}
