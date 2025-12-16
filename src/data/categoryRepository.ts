@@ -11,14 +11,27 @@ async function getCurrentUserId(): Promise<string> {
 }
 
 // Helper to ensure defaults exist in DB
+// Bu fonksiyon her varsayılan kategoriyi tek tek kontrol eder ve eksik olanları ekler
 async function ensureDefaultsExist(userId: string): Promise<void> {
-    const { count } = await supabase
+    // Önce mevcut kategorilerin ID'lerini al
+    const { data: existingCategories, error: fetchError } = await supabase
         .from('categories')
-        .select('*', { count: 'exact', head: true })
+        .select('id')
         .eq('user_id', userId);
 
-    if (count === 0) {
-        const defaultsWithUser = DEFAULT_CATEGORIES.map(c => ({
+    if (fetchError) {
+        console.error('Failed to fetch existing categories:', fetchError);
+        throw fetchError;
+    }
+
+    // Mevcut kategori ID'lerini bir Set'e dönüştür (hızlı arama için)
+    const existingIds = new Set((existingCategories || []).map(c => c.id));
+
+    // Eksik varsayılan kategorileri bul
+    const missingDefaults = DEFAULT_CATEGORIES.filter(c => !existingIds.has(c.id));
+
+    if (missingDefaults.length > 0) {
+        const defaultsToInsert = missingDefaults.map(c => ({
             id: c.id,
             user_id: userId,
             name: c.name,
@@ -28,11 +41,16 @@ async function ensureDefaultsExist(userId: string): Promise<void> {
             order: c.order
         }));
 
-        const { error } = await supabase.from('categories').insert(defaultsWithUser);
-        if (error) {
-            console.error('Failed to insert default categories:', error);
-            throw error;
+        const { error: insertError } = await supabase
+            .from('categories')
+            .insert(defaultsToInsert);
+
+        if (insertError) {
+            console.error('Failed to insert missing default categories:', insertError);
+            throw insertError;
         }
+
+        console.log(`Inserted ${missingDefaults.length} missing default categories`);
     }
 }
 
@@ -42,6 +60,9 @@ async function ensureDefaultsExist(userId: string): Promise<void> {
 export async function getAllCategories(): Promise<Category[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return DEFAULT_CATEGORIES;
+
+    // Varsayılan kategorilerin DB'de olduğundan emin ol
+    await ensureDefaultsExist(user.id);
 
     const { data, error } = await supabase
         .from('categories')
@@ -54,11 +75,9 @@ export async function getAllCategories(): Promise<Category[]> {
         return DEFAULT_CATEGORIES;
     }
 
+    // ensureDefaultsExist çağrıldı, bu yüzden data her zaman dolu olmalı
     if (!data || data.length === 0) {
-        // If table doesn't exist or empty, return defaults.
-        // In a real scenario, we might want to insert defaults for the user.
-        // But for read-only safety if table missing:
-        console.warn('No categories found, returning defaults');
+        console.warn('No categories found after ensuring defaults, returning defaults');
         return DEFAULT_CATEGORIES;
     }
 
