@@ -46,13 +46,19 @@ export async function getAllCategories(): Promise<Category[]> {
     const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('user_id', user.id)
         .order('order', { ascending: true });
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+        console.error('Error fetching categories:', error);
+        return DEFAULT_CATEGORIES;
+    }
+
+    if (!data || data.length === 0) {
         // If table doesn't exist or empty, return defaults.
         // In a real scenario, we might want to insert defaults for the user.
         // But for read-only safety if table missing:
-        console.warn('Could not fetch categories (or empty), returning defaults:', error);
+        console.warn('No categories found, returning defaults');
         return DEFAULT_CATEGORIES;
     }
 
@@ -71,10 +77,14 @@ export async function getAllCategories(): Promise<Category[]> {
  * Get category by ID
  */
 export async function getCategoryById(id: string): Promise<Category | undefined> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return undefined;
+
     const { data, error } = await supabase
         .from('categories')
         .select('*')
         .eq('id', id)
+        .eq('user_id', user.id)
         .single();
 
     if (error || !data) return undefined;
@@ -104,6 +114,7 @@ export async function createCategory(categoryData: Omit<Category, 'id' | 'order'
     const { data: maxOrderData } = await supabase
         .from('categories')
         .select('order')
+        .eq('user_id', userId)
         .order('order', { ascending: false })
         .limit(1)
         .single();
