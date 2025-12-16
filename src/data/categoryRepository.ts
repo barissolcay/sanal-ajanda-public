@@ -10,6 +10,32 @@ async function getCurrentUserId(): Promise<string> {
     return user.id;
 }
 
+// Helper to ensure defaults exist in DB
+async function ensureDefaultsExist(userId: string): Promise<void> {
+    const { count } = await supabase
+        .from('categories')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+    if (count === 0) {
+        const defaultsWithUser = DEFAULT_CATEGORIES.map(c => ({
+            id: c.id,
+            user_id: userId,
+            name: c.name,
+            icon: c.icon,
+            color: c.color,
+            is_default: c.isDefault,
+            order: c.order
+        }));
+
+        const { error } = await supabase.from('categories').insert(defaultsWithUser);
+        if (error) {
+            console.error('Failed to insert default categories:', error);
+            throw error;
+        }
+    }
+}
+
 /**
  * Get all categories (sorted by order)
  */
@@ -68,6 +94,10 @@ export async function getCategoryById(id: string): Promise<Category | undefined>
  */
 export async function createCategory(categoryData: Omit<Category, 'id' | 'order'>): Promise<Category> {
     const userId = await getCurrentUserId();
+
+    // Ensure defaults exist before adding new one
+    await ensureDefaultsExist(userId);
+
     const id = `custom_${crypto.randomUUID().split('-')[0]}`;
 
     // Get max order
@@ -113,6 +143,9 @@ export async function createCategory(categoryData: Omit<Category, 'id' | 'order'
  */
 export async function updateCategory(id: string, updates: Partial<Omit<Category, 'id' | 'isDefault'>>): Promise<Category | undefined> {
     const userId = await getCurrentUserId();
+
+    // Ensure defaults exist before updating (in case we process an update on a default cat that isn't in DB yet)
+    await ensureDefaultsExist(userId);
 
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
