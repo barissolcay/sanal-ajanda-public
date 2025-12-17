@@ -52,10 +52,10 @@ export const TopBar: React.FC<TopBarProps> = ({
                     <Menu className="w-6 h-6" />
                 </button>
 
-                <div className="min-w-[200px] sm:min-w-[280px]">
-                    <h1 className="text-xl font-bold text-slate-100">{title}</h1>
+                <div className="flex-1 min-w-0 sm:flex-none sm:min-w-[280px]">
+                    <h1 className="text-xl font-bold text-slate-100 truncate">{title}</h1>
                     {subtitle && (
-                        <p className="text-sm text-slate-400 hidden sm:block whitespace-nowrap">{subtitle}</p>
+                        <p className="text-sm text-slate-400 hidden sm:block whitespace-nowrap overflow-hidden text-ellipsis">{subtitle}</p>
                     )}
                 </div>
 
@@ -140,27 +140,14 @@ export const TopBar: React.FC<TopBarProps> = ({
                     </div>
                 )}
 
-                {/* New Task Button - Desktop */}
+                {/* New Task Button */}
                 {onNewTask && (
-                    <div className="hidden md:block">
-                        <Button variant="primary" size="md" onClick={onNewTask}>
-                            <Plus className="w-4 h-4" />
-                            <span>Yeni Görev</span>
-                        </Button>
-                    </div>
+                    <Button variant="primary" size="md" onClick={onNewTask}>
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Yeni Görev</span>
+                    </Button>
                 )}
             </div>
-
-            {/* New Task FAB - Mobile */}
-            {onNewTask && (
-                <button
-                    onClick={onNewTask}
-                    className="md:hidden fixed bottom-6 right-6 z-50 p-4 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/40 hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center transform hover:-translate-y-1"
-                    aria-label="Yeni Görev Ekle"
-                >
-                    <Plus className="w-6 h-6" />
-                </button>
-            )}
         </header>
     );
 };
