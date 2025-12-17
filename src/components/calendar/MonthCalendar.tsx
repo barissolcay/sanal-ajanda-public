@@ -174,7 +174,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                                         onTaskClick?.(task);
                                                     }}
                                                     className={clsx(
-                                                        'px-1.5 py-0.5 rounded text-xs truncate cursor-pointer transition-all border-l-2',
+                                                        'px-1.5 py-0.5 rounded text-xs cursor-pointer transition-all border-l-2 overflow-x-auto scrollbar-hide',
                                                         'hover:scale-[1.05] hover:shadow-md',
                                                         task.status === 'done' && 'opacity-50 line-through',
                                                         isHighPriority && 'animate-pulse ring-1 ring-red-500/40 shadow-[0_0_6px_rgba(239,68,68,0.4)]'
@@ -183,11 +183,12 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                                         backgroundColor: task.status === 'done' ? 'rgba(30, 41, 59, 0.5)' : taskStyle.backgroundColor,
                                                         borderLeftColor: taskStyle.borderLeftColor,
                                                         color: task.status === 'done' ? '#64748b' : undefined,
+                                                        whiteSpace: 'nowrap'
                                                     }}
                                                 >
                                                     <div className="flex items-center gap-1 min-w-0">
                                                         {task.priority === 2 && task.status !== 'done' && <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />}
-                                                        <span className="truncate">{task.title}</span>
+                                                        <span>{task.title}</span>
                                                     </div>
                                                 </div>
                                             );
