@@ -24,6 +24,7 @@ export const ListsPage: React.FC = () => {
 
     const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
+        hideOverdue: true, // Hide overdue tasks from lists - they show in 'Sessiz Çığlıklar'
     });
 
     // Filter tasks by category
@@ -63,7 +64,7 @@ export const ListsPage: React.FC = () => {
         await createTask({
             ...data,
             category: activeTab === 'all' ? data.category : activeTab,
-            color: data.color || undefined,
+            color: (data.color || null) as any,
             endDate: data.endDate || undefined,
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
@@ -75,7 +76,7 @@ export const ListsPage: React.FC = () => {
         if (editingTask) {
             await updateTask(editingTask.id, {
                 ...data,
-                color: data.color || undefined,
+                color: (data.color || null) as any, // Pass null to clear in DB (not undefined which skips update)
                 endDate: data.endDate || undefined,
                 startTime: data.startTime || undefined,
                 endTime: data.endTime || undefined,
@@ -103,12 +104,18 @@ export const ListsPage: React.FC = () => {
         await updateTaskStatus(taskId, status);
     };
 
-    // Generate tabs from dynamic categories
+    // Generate tabs from dynamic categories - sorted like sidebar (defaults first, custom last)
+    const sortedCategories = [...categories].sort((a, b) => {
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        return a.order - b.order;
+    });
+
     const tabs = [
         { id: 'all', label: 'Tümü', color: '#64748b' },
-        ...categories.map(cat => ({
+        ...sortedCategories.map(cat => ({
             id: cat.id,
-            label: cat.name.replace(' Listesi', '').replace('Okuma', 'Okuma').replace('İzleme', 'İzleme'),
+            label: cat.name.replace(' Listesi', ''),
             color: cat.color,
         })),
     ];
@@ -132,19 +139,28 @@ export const ListsPage: React.FC = () => {
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
                 {/* Main content */}
                 <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4 md:mr-2">
-                    {/* Tabs */}
-                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 md:pb-0 md:flex-wrap no-scrollbar">
+                    {/* Tabs - Premium styled */}
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 md:pb-0 md:flex-wrap scrollbar-hide">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg border border-indigo-400/40'
-                                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50 border border-transparent'
-                                    }`}
+                                className={clsx(
+                                    'px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap',
+                                    'hover:scale-[1.02] hover:shadow-md',
+                                    activeTab === tab.id
+                                        ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg border border-indigo-400/40'
+                                        : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50 border border-slate-700/40'
+                                )}
                                 style={activeTab !== tab.id ? { borderLeftColor: tab.color, borderLeftWidth: '3px' } : undefined}
                             >
-                                {tab.label}
+                                <span className="flex items-center gap-2">
+                                    <span
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: tab.color }}
+                                    />
+                                    {tab.label}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -160,25 +176,17 @@ export const ListsPage: React.FC = () => {
                         />
                     </div>
                 </div>
+            </div>
 
-                {/* Detail Panel - Mobile: Overlay */}
+            {/* Task Detail Modal - Full screen overlay like MonthPage */}
+            {selectedTask && (
                 <div
-                    className={clsx(
-                        "transition-all duration-300 ease-in-out z-30",
-                        "md:w-80 md:m-4 md:ml-2 md:static block",
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
-                    )}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
                     onClick={(e) => {
-                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
-                            setSelectedTask(null);
-                        }
+                        if (e.target === e.currentTarget) setSelectedTask(null);
                     }}
                 >
-                    <div className={clsx(
-                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
-                        "w-full h-full md:h-full md:w-80",
-                        "p-4 md:p-0"
-                    )}>
+                    <div className="w-full max-w-md max-h-[80vh] overflow-y-auto glass-panel p-0 animate-fadeIn">
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
@@ -188,7 +196,7 @@ export const ListsPage: React.FC = () => {
                         />
                     </div>
                 </div>
-            </div>
+            )}
 
             <TaskFormModal
                 open={isFormOpen || !!editingTask}

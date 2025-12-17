@@ -1,4 +1,4 @@
-// Badge Component
+// Badge Component - Premium Enhanced
 import React from 'react';
 import { clsx } from 'clsx';
 
@@ -6,6 +6,7 @@ export interface BadgeProps {
     children: React.ReactNode;
     variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'amber' | 'custom';
     size?: 'sm' | 'md';
+    pulse?: boolean;
     className?: string;
     style?: React.CSSProperties;
 }
@@ -14,6 +15,7 @@ export const Badge: React.FC<BadgeProps> = ({
     children,
     variant = 'default',
     size = 'sm',
+    pulse = false,
     className,
     style,
 }) => {
@@ -37,8 +39,11 @@ export const Badge: React.FC<BadgeProps> = ({
         <span
             className={clsx(
                 'inline-flex items-center font-medium rounded-full border',
+                'transition-all duration-200 ease-out',
+                'hover:scale-105',
                 variants[variant],
                 sizes[size],
+                pulse && 'animate-pulse-fast',
                 className
             )}
             style={style}

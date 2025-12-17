@@ -1,6 +1,5 @@
 // TodayPage - Daily calendar view
 import React, { useState, useMemo } from 'react';
-import { clsx } from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { DayCalendar } from '../components/calendar/DayCalendar';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -52,6 +51,8 @@ export const TodayPage: React.FC = () => {
     const handlePrev = () => setCurrentDate(navigation.prevDay(currentDate));
     const handleNext = () => setCurrentDate(navigation.nextDay(currentDate));
     const handleToday = () => setCurrentDate(new Date());
+    const handleYesterday = () => setCurrentDate(navigation.prevDay(new Date()));
+    const handleTomorrow = () => setCurrentDate(navigation.nextDay(new Date()));
 
     const handleCreateTask = async (data: TaskFormData) => {
         await createTask({
@@ -96,9 +97,12 @@ export const TodayPage: React.FC = () => {
                 title="Bugün"
                 subtitle={formatDate(currentDate, 'dd MMMM yyyy, EEEE')}
                 showDateNav
+                showDailyNav
                 onPrev={handlePrev}
                 onNext={handleNext}
                 onToday={handleToday}
+                onYesterday={handleYesterday}
+                onTomorrow={handleTomorrow}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
                 showCompleted={showCompleted}
@@ -106,9 +110,9 @@ export const TodayPage: React.FC = () => {
                 onNewTask={() => setIsFormOpen(true)}
             />
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-                {/* Calendar */}
-                <div className="flex-1 overflow-hidden glass-panel m-2 md:m-4 md:mr-2">
+            <div className="flex-1 flex overflow-hidden">
+                {/* Calendar - Full Width */}
+                <div className="flex-1 overflow-hidden glass-panel m-2 md:m-4">
                     <DayCalendar
                         date={currentDate}
                         tasks={dayTasks}
@@ -116,25 +120,23 @@ export const TodayPage: React.FC = () => {
                         selectedTaskId={selectedTask?.id}
                     />
                 </div>
+            </div>
 
-                {/* Detail Panel - Mobile: Overlay */}
+            {/* Task Detail Modal - Only shown when task is selected */}
+            {selectedTask && (
                 <div
-                    className={clsx(
-                        "transition-all duration-300 ease-in-out z-30",
-                        "md:w-80 md:m-4 md:ml-2 md:static block",
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
-                    )}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
                     onClick={(e) => {
-                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
+                        if (e.target === e.currentTarget) {
                             setSelectedTask(null);
                         }
                     }}
                 >
-                    <div className={clsx(
-                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
-                        "w-full h-full md:h-full md:w-80",
-                        "p-4 md:p-0"
-                    )}>
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" />
+
+                    {/* Detail Panel */}
+                    <div className="relative w-full max-w-md max-h-[85vh] glass-panel overflow-hidden animate-scaleIn">
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
@@ -146,7 +148,7 @@ export const TodayPage: React.FC = () => {
                         />
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Form Modal */}
             <TaskFormModal

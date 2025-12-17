@@ -102,7 +102,8 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    // Color: handle both null (clear) and string (set)
+    if ('color' in updates) dbUpdates.color = updates.color || null;
     if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
     if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
     if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;

@@ -17,6 +17,9 @@ export interface TopBarProps {
     showCompleted?: boolean;
     onShowCompletedChange?: (show: boolean) => void;
     onNewTask?: () => void;
+    showDailyNav?: boolean;
+    onYesterday?: () => void;
+    onTomorrow?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -32,6 +35,9 @@ export const TopBar: React.FC<TopBarProps> = ({
     showCompleted = false,
     onShowCompletedChange,
     onNewTask,
+    showDailyNav = false,
+    onYesterday,
+    onTomorrow,
 }) => {
     const { open } = useSidebar();
     return (
@@ -46,10 +52,10 @@ export const TopBar: React.FC<TopBarProps> = ({
                     <Menu className="w-6 h-6" />
                 </button>
 
-                <div>
+                <div className="min-w-[200px] sm:min-w-[280px]">
                     <h1 className="text-xl font-bold text-slate-100">{title}</h1>
                     {subtitle && (
-                        <p className="text-sm text-slate-400 hidden sm:block">{subtitle}</p>
+                        <p className="text-sm text-slate-400 hidden sm:block whitespace-nowrap">{subtitle}</p>
                     )}
                 </div>
 
@@ -69,16 +75,40 @@ export const TopBar: React.FC<TopBarProps> = ({
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
-                        {showTodayButton && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={onToday}
-                                className="ml-2 hidden sm:flex"
-                            >
-                                Bugün
-                            </Button>
-                        )}
+
+                        <div className="flex items-center gap-1 ml-2 hidden sm:flex">
+                            {showDailyNav && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={onYesterday}
+                                    className="text-slate-400 hover:text-slate-200"
+                                >
+                                    Dün
+                                </Button>
+                            )}
+
+                            {showTodayButton && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={onToday}
+                                >
+                                    Bugün
+                                </Button>
+                            )}
+
+                            {showDailyNav && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={onTomorrow}
+                                    className="text-slate-400 hover:text-slate-200"
+                                >
+                                    Yarın
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

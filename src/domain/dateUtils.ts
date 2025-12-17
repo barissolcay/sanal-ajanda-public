@@ -187,6 +187,41 @@ export function isMultiDay(task: Task): boolean {
     return task.startDate !== task.endDate;
 }
 
+/**
+ * Sort tasks by status and time:
+ * 1. Active tasks without time (all-day) first
+ * 2. Active tasks with time second
+ * 3. Completed/cancelled tasks last
+ * Within each group, sort by startTime
+ */
+export function sortTasksByPriority(tasks: Task[]): {
+    activeNoTime: Task[];
+    activeWithTime: Task[];
+    completed: Task[];
+} {
+    const activeNoTime: Task[] = [];
+    const activeWithTime: Task[] = [];
+    const completed: Task[] = [];
+
+    for (const task of tasks) {
+        if (task.status === 'done' || task.status === 'cancelled') {
+            completed.push(task);
+        } else if (hasTime(task)) {
+            activeWithTime.push(task);
+        } else {
+            activeNoTime.push(task);
+        }
+    }
+
+    // Sort each group by time
+    const sortByTime = (a: Task, b: Task) => (a.startTime || '').localeCompare(b.startTime || '');
+    activeNoTime.sort(sortByTime);
+    activeWithTime.sort(sortByTime);
+    completed.sort(sortByTime);
+
+    return { activeNoTime, activeWithTime, completed };
+}
+
 // ============================================
 // CALENDAR HELPERS
 // ============================================

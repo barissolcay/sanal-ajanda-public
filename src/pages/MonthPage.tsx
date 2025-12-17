@@ -1,18 +1,20 @@
 // MonthPage - Monthly calendar view
 import React, { useState, useMemo } from 'react';
-import { clsx } from 'clsx';
-import { X } from 'lucide-react';
+import { X, AlertTriangle, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { MonthCalendar } from '../components/calendar/MonthCalendar';
-import { TaskList } from '../components/tasks/TaskList';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
-import { navigation, formatDate, getMonthRange, isTaskInRange, isTaskOnDate, isSameDay } from '../domain/dateUtils';
+import { useCategories } from '../hooks/useCategories';
+import { navigation, formatDate, getMonthRange, isTaskInRange, isTaskOnDate, isSameDay, sortTasksByPriority, isOverdue } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const MonthPage: React.FC = () => {
+    const navigate = useNavigate();
     const { settings } = useSettings();
     const [showCompleted, setShowCompleted] = useState(settings.showCompletedByDefault);
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,6 +27,16 @@ export const MonthPage: React.FC = () => {
     const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
+    const { getCategoryColor } = useCategories();
+
+    // Get task style based on category color
+    const getTaskStyle = (task: Task) => {
+        const color = task.color || getCategoryColor(task.category);
+        return {
+            backgroundColor: `${color}30`,
+            borderColor: `${color}60`,
+        };
+    };
 
     const monthRange = useMemo(() => getMonthRange(currentDate), [currentDate]);
 
@@ -45,12 +57,12 @@ export const MonthPage: React.FC = () => {
         return filtered;
     }, [tasks, monthRange, searchQuery]);
 
-    // Tasks for selected date
+    // Tasks for selected date with smart sorting
     const selectedDateTasks = useMemo(() => {
-        if (!selectedDate) return [];
-        return monthTasks
-            .filter(task => isTaskOnDate(task, selectedDate))
-            .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+        if (!selectedDate) return { all: [], sorted: { activeNoTime: [], activeWithTime: [], completed: [] } };
+        const dayTasks = monthTasks.filter(task => isTaskOnDate(task, selectedDate));
+        const sorted = sortTasksByPriority(dayTasks);
+        return { all: dayTasks, sorted };
     }, [monthTasks, selectedDate]);
 
     React.useEffect(() => {
@@ -71,6 +83,11 @@ export const MonthPage: React.FC = () => {
             setSelectedDate(date);
         }
         setSelectedTask(null);
+    };
+
+    const handleGoToDay = () => {
+        // Navigate to Today page (which shows day view)
+        navigate('/');
     };
 
     const handleCreateTask = async (data: TaskFormData) => {
@@ -130,10 +147,9 @@ export const MonthPage: React.FC = () => {
                 onNewTask={() => setIsFormOpen(true)}
             />
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-                {/* Calendar and Task List */}
-                <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4 md:mr-2 gap-3">
-                    {/* Calendar */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Calendar - Full Height */}
+                <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4">
                     <div className="flex-1 glass-panel overflow-hidden">
                         <MonthCalendar
                             date={currentDate}
@@ -144,73 +160,270 @@ export const MonthPage: React.FC = () => {
                             onTaskClick={setSelectedTask}
                         />
                     </div>
-
-                    {/* Selected date tasks - Mobile: Always visible below calendar if date selected. Desktop: Below calendar */}
-                    {selectedDate && (
-                        <div className="h-96 md:h-80 glass-panel p-4 overflow-hidden shrink-0 transition-height duration-300">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-slate-300">
-                                    {formatDate(selectedDate, 'd MMMM yyyy, EEEE')} – {selectedDateTasks.length} görev
-                                </h3>
-                                <button
-                                    onClick={() => setSelectedDate(null)}
-                                    className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                            <div className="overflow-y-auto h-[calc(100%-2rem)]">
-                                <TaskList
-                                    tasks={selectedDateTasks}
-                                    selectedTaskId={selectedTask?.id}
-                                    onTaskSelect={setSelectedTask}
-                                    onStatusChange={handleTaskStatusChange}
-                                    emptyMessage="Bu günde görev yok"
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
+            </div>
 
-                {/* Detail Panel - Mobile: Overlay or Stacked? Stacked might be too tall. Let's make it an overlay/modal style on mobile or just stack if space permits.
-                   Actually, user said "design is useful on computer but not on mobile".
-                   A side panel on mobile usually pops up as a bottom sheet or full screen.
-                   For simplicity and speed, let's use the existing panel styling but position it differently or show it conditionally/overlay on mobile.
-                   
-                   Let's make it a fixed overlay on mobile when a task is selected.
-                */}
+            {/* Selected Date Modal - Shown when a day is clicked */}
+            {selectedDate && (
                 <div
-                    className={clsx(
-                        "transition-all duration-300 ease-in-out z-30",
-                        // Desktop: static width side panel
-                        "md:w-80 md:m-4 md:ml-2 md:static",
-                        // Mobile: fixed full screen or bottom sheet styling
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none flex items-end md:block" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
-                    )}
+                    className="fixed inset-0 z-40 flex items-center justify-center p-4 md:p-8"
                     onClick={(e) => {
-                        // Close if clicking backdrop on mobile
-                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
-                            setSelectedTask(null);
+                        if (e.target === e.currentTarget) {
+                            setSelectedDate(null);
                         }
                     }}
                 >
-                    <div className={clsx(
-                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
-                        // Mobile: Slide up/center or just standard panel
-                        "w-full h-full md:h-full md:w-80",
-                        // Mobile Padding/Margin adjustments
-                        "p-4 md:p-0"
-                    )}>
-                        <TaskDetailPanel
-                            task={selectedTask}
-                            onClose={() => setSelectedTask(null)}
-                            onEdit={() => setEditingTask(selectedTask)}
-                            onDelete={handleDeleteTask}
-                            onStatusChange={handleStatusChange}
-                        />
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" />
+
+                    {/* Date Tasks Panel */}
+                    <div className="relative w-full max-w-md max-h-[85vh] glass-panel overflow-hidden flex flex-col animate-scaleIn">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-800/60">
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/30 to-cyan-500/20 text-slate-100 font-bold text-xl">
+                                    {formatDate(selectedDate, 'd')}
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-100">
+                                        {formatDate(selectedDate, 'MMMM yyyy')}
+                                    </h3>
+                                    <p className="text-sm text-slate-400">
+                                        {formatDate(selectedDate, 'EEEE')} – {selectedDateTasks.all.length} görev
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleGoToDay}
+                                    className="px-3 py-1.5 text-sm rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition-colors"
+                                >
+                                    Güne Git
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDate(null)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {selectedDateTasks.all.length === 0 ? (
+                                <div className="flex items-center justify-center h-32 text-slate-500">
+                                    Bu günde görev yok
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {/* Active tasks without time */}
+                                    {selectedDateTasks.sorted.activeNoTime.map(task => {
+                                        const isHighPriority = task.priority === 2;
+                                        const taskStyle = getTaskStyle(task);
+                                        const overdueTask = isOverdue(task);
+                                        // Flip Card Structure for Overdue Tasks
+                                        if (overdueTask) {
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                    className="overdue-flip-container h-12 cursor-pointer"
+                                                >
+                                                    <div className="overdue-flip-inner">
+                                                        {/* Front Face */}
+                                                        <div
+                                                            className={clsx(
+                                                                'overdue-flip-front flex items-center gap-3 p-3 rounded-lg border border-l-4 border-l-cyan-400 bg-slate-900/80',
+                                                                task.status === 'done' && 'opacity-50 line-through'
+                                                            )}
+                                                            style={{
+                                                                backgroundColor: taskStyle.backgroundColor,
+                                                                borderColor: taskStyle.borderColor,
+                                                                borderLeftColor: '#22d3ee',
+                                                            }}
+                                                        >
+                                                            <div className="w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center shrink-0" />
+                                                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                                <Clock className="w-4 h-4 text-cyan-400 shrink-0 overdue-icon-sad" />
+                                                                {task.priority === 2 && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                                <span className="text-sm text-slate-200 break-words line-clamp-1">{task.title}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Back Face */}
+                                                        <div className="overdue-flip-back rounded-lg text-sm">
+                                                            <span>😭 Unuttun mu beni?!</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // Standard Task Render
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:scale-[1.01] ${isHighPriority ? 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : ''
+                                                    }`}
+                                                style={taskStyle}
+                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                            >
+                                                <div className="w-5 h-5 rounded-full border-2 border-slate-500" />
+                                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                                    {task.priority === 2 && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                    <span className="text-sm text-slate-200 break-words">{task.title}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Separator for timed tasks */}
+                                    {selectedDateTasks.sorted.activeWithTime.length > 0 && selectedDateTasks.sorted.activeNoTime.length > 0 && (
+                                        <div className="flex items-center gap-2 py-2">
+                                            <div className="flex-1 h-px bg-slate-700/50" />
+                                            <span className="text-xs text-slate-600">Saatli</span>
+                                            <div className="flex-1 h-px bg-slate-700/50" />
+                                        </div>
+                                    )}
+
+                                    {/* Active tasks with time */}
+                                    {selectedDateTasks.sorted.activeWithTime.map(task => {
+                                        const isHighPriority = task.priority === 2;
+                                        const taskStyle = getTaskStyle(task);
+                                        const overdueTask = isOverdue(task);
+                                        // Flip Card Structure for Overdue Tasks (Timed)
+                                        if (overdueTask) {
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                    className="overdue-flip-container h-16 cursor-pointer"
+                                                >
+                                                    <div className="overdue-flip-inner">
+                                                        {/* Front Face */}
+                                                        <div
+                                                            className={clsx(
+                                                                'overdue-flip-front flex items-center gap-3 p-3 rounded-lg border border-l-4 border-l-cyan-400 bg-slate-900/80',
+                                                                task.status === 'done' && 'opacity-50 line-through'
+                                                            )}
+                                                            style={{
+                                                                backgroundColor: taskStyle.backgroundColor,
+                                                                borderColor: taskStyle.borderColor,
+                                                                borderLeftColor: '#22d3ee',
+                                                            }}
+                                                        >
+                                                            <div className="w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center shrink-0" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Clock className="w-4 h-4 text-cyan-400 shrink-0 overdue-icon-sad" />
+                                                                    {task.priority === 2 && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                                    <span className="text-sm text-slate-200 break-words line-clamp-1">{task.title}</span>
+                                                                </div>
+                                                                <span className="text-xs text-slate-400">
+                                                                    {task.startTime?.substring(0, 5)}{task.endTime ? ` – ${task.endTime.substring(0, 5)}` : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Back Face */}
+                                                        <div className="overdue-flip-back rounded-lg text-sm flex-col gap-1">
+                                                            <span>😭 Unuttun mu beni?!</span>
+                                                            <span className="text-[10px] opacity-80 font-normal">
+                                                                {task.startTime?.substring(0, 5)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        // Standard Render
+                                        return (
+                                            <div
+                                                key={task.id}
+                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:scale-[1.01] ${isHighPriority ? 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : ''
+                                                    }`}
+                                                style={taskStyle}
+                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                            >
+                                                <div className="w-5 h-5 rounded-full border-2 border-slate-500" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                        {task.priority === 2 && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                        <span className="text-sm text-slate-200 break-words">{task.title}</span>
+                                                    </div>
+                                                    <span className="text-xs text-slate-400">
+                                                        {task.startTime?.substring(0, 5)}{task.endTime ? ` – ${task.endTime.substring(0, 5)}` : ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {/* Separator for completed */}
+                                    {selectedDateTasks.sorted.completed.length > 0 && (selectedDateTasks.sorted.activeNoTime.length > 0 || selectedDateTasks.sorted.activeWithTime.length > 0) && (
+                                        <div className="flex items-center gap-2 py-2">
+                                            <div className="flex-1 h-px bg-slate-700/50" />
+                                            <span className="text-xs text-slate-600">Tamamlanan</span>
+                                            <div className="flex-1 h-px bg-slate-700/50" />
+                                        </div>
+                                    )}
+
+                                    {/* Completed tasks */}
+                                    {selectedDateTasks.sorted.completed.map(task => (
+                                        <div
+                                            key={task.id}
+                                            className="flex items-center gap-3 p-3 rounded-lg bg-slate-800/20 hover:bg-slate-800/40 transition-colors cursor-pointer opacity-60"
+                                            onClick={() => handleTaskStatusChange(task.id, 'pending')}
+                                        >
+                                            <div className="w-5 h-5 rounded-full border-2 bg-emerald-500 border-emerald-500 flex items-center justify-center">
+                                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
+                                                    <path d="M3.707 5.293a1 1 0 00-1.414 1.414l2.5 2.5a1 1 0 001.414 0l5.5-5.5a1 1 0 00-1.414-1.414L5.5 7.086 3.707 5.293z" />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="block text-sm truncate text-slate-500 line-through">{task.title}</span>
+                                                {task.startTime && (
+                                                    <span className="text-xs text-slate-600">
+                                                        {task.startTime.substring(0, 5)}{task.endTime ? ` – ${task.endTime.substring(0, 5)}` : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )
+            }
+
+            {/* Task Detail Modal - Only shown when task is selected */}
+            {
+                selectedTask && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8"
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setSelectedTask(null);
+                            }
+                        }}
+                    >
+                        {/* Backdrop */}
+                        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" />
+
+                        {/* Detail Panel */}
+                        <div className="relative w-full max-w-md max-h-[85vh] glass-panel overflow-hidden animate-scaleIn">
+                            <TaskDetailPanel
+                                task={selectedTask}
+                                onClose={() => setSelectedTask(null)}
+                                onEdit={() => setEditingTask(selectedTask)}
+                                onDelete={handleDeleteTask}
+                                onStatusChange={handleStatusChange}
+                            />
+                        </div>
+                    </div>
+                )
+            }
 
             <TaskFormModal
                 open={isFormOpen || !!editingTask}
@@ -221,6 +434,6 @@ export const MonthPage: React.FC = () => {
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
             />
-        </div>
+        </div >
     );
 };

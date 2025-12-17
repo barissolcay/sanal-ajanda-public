@@ -1,4 +1,4 @@
-// Sheet Component - Slide-out panel
+// Sheet Component - Slide-out panel (Premium Enhanced)
 import React, { useEffect } from 'react';
 import { clsx } from 'clsx';
 import { X } from 'lucide-react';
@@ -50,7 +50,7 @@ export const Sheet: React.FC<SheetProps> = ({
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
+                className="modal-overlay"
                 onClick={onClose}
                 aria-hidden="true"
             />
@@ -59,11 +59,10 @@ export const Sheet: React.FC<SheetProps> = ({
             <div
                 className={clsx(
                     'fixed top-0 bottom-0 z-50 w-full max-w-md',
-                    'bg-slate-900/95 backdrop-blur-xl border-slate-800/60 shadow-2xl',
+                    'bg-slate-900/95 backdrop-blur-2xl border-slate-800/60 shadow-2xl',
                     'flex flex-col',
                     'transition-transform duration-300 ease-out',
-                    side === 'right' ? 'right-0 border-l' : 'left-0 border-r',
-                    open ? 'translate-x-0' : side === 'right' ? 'translate-x-full' : '-translate-x-full',
+                    side === 'right' ? 'right-0 border-l animate-slideInRight' : 'left-0 border-r animate-slideInLeft',
                     className
                 )}
             >
@@ -74,7 +73,12 @@ export const Sheet: React.FC<SheetProps> = ({
                     )}
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                        className={clsx(
+                            "p-2 rounded-lg transition-all duration-200",
+                            "text-slate-400 hover:text-slate-200",
+                            "hover:bg-slate-800/60 hover:shadow-glow-sm",
+                            "active:scale-95"
+                        )}
                         aria-label="Kapat"
                     >
                         <X className="w-5 h-5" />
@@ -82,7 +86,7 @@ export const Sheet: React.FC<SheetProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-6 animate-fadeIn">
                     {children}
                 </div>
             </div>

@@ -1,4 +1,4 @@
-// Sidebar Component
+// Sidebar Component - Premium Enhanced
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -18,6 +18,7 @@ import {
     LayoutGrid,
     LucideIcon,
     LogOut,
+    AlertCircle,
 } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { supabase } from '../../lib/supabaseClient';
@@ -40,6 +41,7 @@ const viewItems: NavItem[] = [
 
 const otherItems: NavItem[] = [
     { to: '/lists', icon: <LayoutGrid className="w-5 h-5" />, label: 'Tüm Listeler' },
+    { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar' },
     { to: '/completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Tamamlananlar' },
     { to: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Ayarlar' },
 ];
@@ -59,7 +61,7 @@ const iconMap: Record<string, LucideIcon> = {
 
 const getIconComponent = (iconName: string): React.ReactNode => {
     const IconComponent = iconMap[iconName] || List;
-    return <IconComponent className="w-5 h-5" />;
+    return <IconComponent className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />;
 };
 
 const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color }) => {
@@ -70,17 +72,18 @@ const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color }) => {
         <NavLink
             to={to}
             className={clsx(
-                'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200',
+                'group flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ease-out',
                 isActive
-                    ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg border border-indigo-400/40'
-                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50'
+                    ? 'bg-gradient-to-r from-indigo-500/40 to-cyan-400/30 text-slate-50 shadow-lg shadow-indigo-500/20 border border-indigo-400/40'
+                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-slate-50 hover:shadow-md'
             )}
         >
-            {color ? (
-                <span style={{ color }}>{icon}</span>
-            ) : (
-                icon
-            )}
+            <span className={clsx(
+                'transition-all duration-200',
+                isActive && 'drop-shadow-[0_0_8px_currentColor]'
+            )} style={color ? { color } : undefined}>
+                {icon}
+            </span>
             <span className="font-medium">{label}</span>
         </NavLink>
     );
@@ -115,8 +118,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         close();
     }, [location.pathname]);
 
-    // Convert categories to nav items
-    const listItems: NavItem[] = categories.map((cat: Category) => ({
+    // Convert categories to nav items - defaults first, custom (user-added) last
+    const sortedCategories = [...categories].sort((a, b) => {
+        // Default categories come first
+        if (a.isDefault && !b.isDefault) return -1;
+        if (!a.isDefault && b.isDefault) return 1;
+        // Within same type, sort by order
+        return a.order - b.order;
+    });
+
+    const listItems: NavItem[] = sortedCategories.map((cat: Category) => ({
         to: `/lists/${cat.id}`,
         icon: getIconComponent(cat.icon),
         label: cat.name,

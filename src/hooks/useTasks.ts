@@ -8,6 +8,7 @@ export interface UseTasksOptions {
     showCompleted?: boolean;
     category?: TaskCategory;
     status?: TaskStatus;
+    hideOverdue?: boolean; // Hide overdue incomplete tasks (for calendar views)
 }
 
 export interface UseTasksReturn {
@@ -29,15 +30,17 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
-    const { showCompleted = true, category, status } = options;
+    const { showCompleted = true, category, status, hideOverdue = false } = options;
 
     // Helper to check if task matches current filters
     const matchesFilters = useCallback((task: Task): boolean => {
         if (!showCompleted && task.status === 'done') return false;
         if (category && task.category !== category) return false;
         if (status && task.status !== status) return false;
+        // Hide overdue incomplete tasks if requested
+        if (hideOverdue && task.status !== 'done' && isOverdue(task)) return false;
         return true;
-    }, [showCompleted, category, status]);
+    }, [showCompleted, category, status, hideOverdue]);
 
     // Load all tasks
     const loadTasks = useCallback(async () => {
@@ -56,6 +59,10 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
             if (status) {
                 loadedTasks = loadedTasks.filter(t => t.status === status);
             }
+            // Hide overdue incomplete tasks if requested
+            if (hideOverdue) {
+                loadedTasks = loadedTasks.filter(t => !(t.status !== 'done' && isOverdue(t)));
+            }
 
             setTasks(loadedTasks);
         } catch (err) {
@@ -63,7 +70,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         } finally {
             setLoading(false);
         }
-    }, [showCompleted, category, status]);
+    }, [showCompleted, category, status, hideOverdue]);
 
     // Initial load
     useEffect(() => {

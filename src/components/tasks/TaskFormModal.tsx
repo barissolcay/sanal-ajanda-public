@@ -1,4 +1,4 @@
-// TaskFormModal Component
+// TaskFormModal Component - Premium Enhanced
 import React, { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -138,6 +138,15 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
         }
     };
 
+    // Handle category change - clear custom color so new category color is used
+    const handleCategoryChange = (newCategory: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            category: newCategory,
+            color: '', // Clear custom color to use new category's color
+        }));
+    };
+
     // Get the display color (custom or category default)
     const displayColor = formData.color || getCategoryColor(formData.category);
 
@@ -159,14 +168,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                className="modal-overlay"
                 onClick={onClose}
             />
 
             {/* Modal */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div
-                    className="w-full max-w-lg bg-slate-900/95 backdrop-blur-xl border border-slate-800/60 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+                    className="w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-slate-800/60 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-scaleIn"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
@@ -176,7 +185,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         </h2>
                         <button
                             onClick={onClose}
-                            className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                            className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 hover:shadow-glow-sm transition-all duration-200 active:scale-95"
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -201,7 +210,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 onChange={(e) => updateField('description', e.target.value)}
                                 placeholder="Görev açıklaması..."
                                 rows={3}
-                                className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-200 placeholder-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 resize-none"
+                                className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-200 placeholder-slate-500 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 focus:shadow-[0_0_20px_rgba(99,102,241,0.15)] hover:border-slate-600 resize-none"
                             />
                         </div>
 
@@ -210,7 +219,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 label="Kategori"
                                 options={categoryOptions}
                                 value={formData.category}
-                                onChange={(value) => updateField('category', value)}
+                                onChange={handleCategoryChange}
                             />
 
                             <Select
@@ -237,7 +246,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setShowColorPicker(!showColorPicker)}
-                                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-200 flex items-center gap-3 hover:border-slate-600 transition-colors"
+                                    className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-200 flex items-center gap-3 hover:border-slate-600 transition-all duration-300 hover:shadow-[0_0_15px_rgba(99,102,241,0.1)]"
                                 >
                                     <div
                                         className="w-6 h-6 rounded-lg border-2 border-white/20"
@@ -249,7 +258,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 </button>
 
                                 {showColorPicker && (
-                                    <div className="mt-2 p-3 bg-slate-800/90 rounded-xl border border-slate-700/60">
+                                    <div className="mt-2 p-3 bg-slate-800/90 rounded-xl border border-slate-700/60 animate-fadeIn">
                                         <div className="flex flex-wrap gap-2">
                                             {/* Category default option */}
                                             <button
@@ -258,7 +267,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                                     updateField('color', '');
                                                     setShowColorPicker(false);
                                                 }}
-                                                className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 ${!formData.color ? 'border-white' : 'border-transparent'
+                                                className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all duration-200 hover:scale-110 ${!formData.color ? 'border-white shadow-lg' : 'border-transparent'
                                                     }`}
                                                 style={{ backgroundColor: getCategoryColor(formData.category) }}
                                                 title="Kategori rengi"
@@ -275,7 +284,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                                         updateField('color', color);
                                                         setShowColorPicker(false);
                                                     }}
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 ${formData.color === color ? 'border-white' : 'border-transparent'
+                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center border-2 transition-all duration-200 hover:scale-110 ${formData.color === color ? 'border-white shadow-lg' : 'border-transparent'
                                                         }`}
                                                     style={{ backgroundColor: color }}
                                                     title={color}
