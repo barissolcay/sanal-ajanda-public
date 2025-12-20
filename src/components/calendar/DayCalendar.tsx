@@ -70,6 +70,13 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
         };
     };
 
+    // Format time to HH:mm (remove seconds if present)
+    const formatTime = (time: string | undefined): string => {
+        if (!time) return '';
+        // Handle HH:mm:ss or HH:mm format
+        return time.substring(0, 5);
+    };
+
     // Get task style with proper color handling
     const getTaskStyle = (task: Task, top: number, height: number): React.CSSProperties => {
         const color = task.color || getCategoryColor(task.category);
@@ -78,6 +85,14 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
             height: Math.max(height, 30),
             backgroundColor: `${color}40`,
             borderColor: color,
+        };
+    };
+
+    // Get overdue flip card style (fixed background, not category color)
+    const getOverdueFlipStyle = (top: number, height: number): React.CSSProperties => {
+        return {
+            top,
+            height: Math.max(height, 30),
         };
     };
 
@@ -262,10 +277,10 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                         key={task.id}
                                         onClick={() => onTaskClick?.(task)}
                                         className={clsx(
-                                            "overdue-flip-container absolute left-0 right-0 mx-1 cursor-pointer overflow-visible z-20 outline-none",
+                                            "overdue-flip-container absolute left-0 right-0 mx-1 cursor-pointer overflow-hidden z-20 outline-none",
                                             selectedTaskId === task.id && 'z-30'
                                         )}
-                                        style={getTaskStyle(task, top, height)}
+                                        style={getOverdueFlipStyle(top, height)}
                                         tabIndex={0}
                                         role="button"
                                     >
@@ -273,7 +288,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                             {/* Front */}
                                             <div
                                                 className={clsx(
-                                                    'overdue-flip-front px-3 py-1 rounded-lg border-l-4 border-l-cyan-400 bg-slate-900/90 text-left overflow-hidden',
+                                                    'overdue-flip-front px-3 py-1 rounded-lg border-l-4 border border-cyan-500/30 bg-slate-900/95 text-left overflow-hidden h-full',
                                                     isHighPriority && 'animate-pulse ring-1 ring-red-500/50'
                                                 )}
                                                 style={{ borderLeftColor: '#22d3ee' }}
@@ -283,15 +298,15 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                                     <span className="truncate">{task.title}</span>
                                                 </div>
                                                 <p className="text-xs text-slate-400">
-                                                    {task.startTime} - {task.endTime}
+                                                    {formatTime(task.startTime)} - {formatTime(task.endTime)}
                                                 </p>
                                             </div>
 
                                             {/* Back */}
                                             <div className="overdue-flip-back rounded-lg text-xs font-bold flex-col gap-1 items-center justify-center">
-                                                <span className="text-center px-1">😭 Unuttun?!</span>
+                                                <span className="text-center px-1">😭 Unuttun mu beni?!</span>
                                                 <span className="text-[10px] opacity-80 font-normal">
-                                                    {task.startTime}
+                                                    {formatTime(task.startTime)}
                                                 </span>
                                             </div>
                                         </div>
@@ -324,7 +339,7 @@ export const DayCalendar: React.FC<DayCalendarProps> = ({
                                         </span>
                                     </div>
                                     <p className="text-xs text-slate-400">
-                                        {task.startTime} - {task.endTime}
+                                        {formatTime(task.startTime)} - {formatTime(task.endTime)}
                                     </p>
                                 </button>
                             );

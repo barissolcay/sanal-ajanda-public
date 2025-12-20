@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
+import { DashboardPage } from './pages/DashboardPage';
 import { TodayPage } from './pages/TodayPage';
 import { WeekPage } from './pages/WeekPage';
 import { MonthPage } from './pages/MonthPage';
@@ -14,8 +15,11 @@ import { SettingsPage } from './pages/SettingsPage';
 export const AppRoutes: React.FC = () => {
     return (
         <Routes>
+            {/* Dashboard - Home */}
+            <Route path="/" element={<DashboardPage />} />
+
             {/* Calendar Views */}
-            <Route path="/" element={<TodayPage />} />
+            <Route path="/today" element={<TodayPage />} />
             <Route path="/week" element={<WeekPage />} />
             <Route path="/month" element={<MonthPage />} />
             <Route path="/year" element={<YearPage />} />
@@ -34,3 +38,4 @@ export const AppRoutes: React.FC = () => {
         </Routes>
     );
 };
+

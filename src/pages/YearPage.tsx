@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { YearCalendar } from '../components/calendar/YearCalendar';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
+import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
 import { useCategories } from '../hooks/useCategories';
@@ -18,10 +19,12 @@ export const YearPage: React.FC = () => {
     const [showCompleted, setShowCompleted] = useState(settings.showCompletedByDefault);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    const { tasks, createTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
     const { getCategoryColor } = useCategories();
@@ -99,7 +102,7 @@ export const YearPage: React.FC = () => {
 
     const handleGoToMonth = () => {
         if (selectedMonth) {
-            navigate('/month');
+            navigate('/month', { state: { selectedMonth: selectedMonth.toISOString() } });
         }
     };
 
@@ -115,6 +118,37 @@ export const YearPage: React.FC = () => {
 
     const handleTaskStatusChange = async (taskId: string, status: Task['status']) => {
         await updateTaskStatus(taskId, status);
+    };
+
+    const handleTaskClick = (task: Task) => {
+        setSelectedTask(task);
+    };
+
+    const handleUpdateTask = async (data: TaskFormData) => {
+        if (editingTask) {
+            await updateTask(editingTask.id, {
+                ...data,
+                endDate: data.endDate || undefined,
+                startTime: data.startTime || undefined,
+                endTime: data.endTime || undefined,
+            });
+            setEditingTask(null);
+            setSelectedTask(null);
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        if (selectedTask) {
+            await deleteTask(selectedTask.id);
+            setSelectedTask(null);
+        }
+    };
+
+    const handleStatusChange = async (status: Task['status']) => {
+        if (selectedTask) {
+            await updateTaskStatus(selectedTask.id, status);
+            setSelectedTask({ ...selectedTask, status });
+        }
     };
 
     return (
@@ -226,7 +260,7 @@ export const YearPage: React.FC = () => {
                                                         return (
                                                             <div
                                                                 key={task.id}
-                                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                                onClick={() => handleTaskClick(task)}
                                                                 className="overdue-flip-container cursor-pointer mb-2 outline-none min-h-[3rem]"
                                                                 tabIndex={0}
                                                                 role="button"
@@ -270,7 +304,7 @@ export const YearPage: React.FC = () => {
                                                                 isHighPriority && 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
                                                             )}
                                                             style={taskStyle}
-                                                            onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                            onClick={() => handleTaskClick(task)}
                                                         >
                                                             <div className="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center" />
                                                             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -299,7 +333,7 @@ export const YearPage: React.FC = () => {
                                                         return (
                                                             <div
                                                                 key={task.id}
-                                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                                onClick={() => handleTaskClick(task)}
                                                                 className="overdue-flip-container cursor-pointer mb-2 outline-none min-h-[3.5rem]"
                                                                 tabIndex={0}
                                                                 role="button"
@@ -347,7 +381,7 @@ export const YearPage: React.FC = () => {
                                                                 isHighPriority && 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
                                                             )}
                                                             style={taskStyle}
-                                                            onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                            onClick={() => handleTaskClick(task)}
                                                         >
                                                             <div className="w-4 h-4 rounded-full border-2 border-slate-500 flex items-center justify-center" />
                                                             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -395,10 +429,37 @@ export const YearPage: React.FC = () => {
             )}
 
             <TaskFormModal
-                open={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                onSubmit={handleCreateTask}
+                open={isFormOpen || !!editingTask}
+                task={editingTask}
+                onClose={() => {
+                    setIsFormOpen(false);
+                    setEditingTask(null);
+                }}
+                onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
             />
+
+            {/* Task Detail Modal */}
+            {selectedTask && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setSelectedTask(null);
+                        }
+                    }}
+                >
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-fadeIn" />
+                    <div className="relative w-full max-w-md max-h-[85vh] glass-panel overflow-hidden animate-scaleIn">
+                        <TaskDetailPanel
+                            task={selectedTask}
+                            onClose={() => setSelectedTask(null)}
+                            onEdit={() => setEditingTask(selectedTask)}
+                            onDelete={handleDeleteTask}
+                            onStatusChange={handleStatusChange}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

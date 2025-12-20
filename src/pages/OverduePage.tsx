@@ -7,6 +7,7 @@ import { TaskList } from '../components/tasks/TaskList';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { useTasks } from '../hooks/useTasks';
+import { isOverdue } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const OverduePage: React.FC = () => {
@@ -18,36 +19,19 @@ export const OverduePage: React.FC = () => {
         showCompleted: false, // Only show incomplete tasks
     });
 
-    // Get today's start
+    // Get today's start (for grouping purposes)
     const today = startOfDay(new Date());
 
-    // Filter overdue tasks: end date OR start date is before today, and not completed
+    // Filter overdue tasks using the same isOverdue function as Sidebar
+    // This includes tasks whose end time has passed, even on the same day
     const overdueTasks = useMemo(() => {
-        return tasks.filter(task => {
-            if (task.status === 'done') return false;
-
-            // Check if task has end date/time that's passed
-            const taskEndDate = task.endDate ? new Date(task.endDate) : new Date(task.startDate);
-
-            // If task has end time, include that
-            if (task.endTime && task.endDate) {
-                const [hours, minutes] = task.endTime.split(':').map(Number);
-                taskEndDate.setHours(hours, minutes);
-            } else if (task.startTime && !task.endDate) {
-                // Task with start time only - check if start time passed
-                const [hours, minutes] = (task.endTime || task.startTime).split(':').map(Number);
-                taskEndDate.setHours(hours, minutes);
-            }
-
-            // Return true if task end is before today (not including today)
-            return startOfDay(taskEndDate) < today;
-        }).sort((a, b) => {
+        return tasks.filter(task => isOverdue(task)).sort((a, b) => {
             // Sort by date, most recent first
             const dateA = new Date(a.endDate || a.startDate);
             const dateB = new Date(b.endDate || b.startDate);
             return dateB.getTime() - dateA.getTime();
         });
-    }, [tasks, today]);
+    }, [tasks]);
 
     // Filter by search
     const filteredTasks = useMemo(() => {
@@ -64,8 +48,16 @@ export const OverduePage: React.FC = () => {
         const yesterday = subDays(today, 1);
         const lastWeek = subDays(today, 7);
         const lastMonth = subDays(today, 30);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
 
         const groups: { label: string; tasks: Task[] }[] = [];
+
+        // Tasks from today (time has passed but date is still today)
+        const todayTasks = filteredTasks.filter(t => {
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            return taskDate >= today && taskDate < tomorrow;
+        });
 
         const yesterdayTasks = filteredTasks.filter(t => {
             const taskDate = startOfDay(new Date(t.endDate || t.startDate));
@@ -87,6 +79,9 @@ export const OverduePage: React.FC = () => {
             return taskDate < lastMonth;
         });
 
+        if (todayTasks.length > 0) {
+            groups.push({ label: 'Bugün', tasks: todayTasks });
+        }
         if (yesterdayTasks.length > 0) {
             groups.push({ label: 'Dün', tasks: yesterdayTasks });
         }

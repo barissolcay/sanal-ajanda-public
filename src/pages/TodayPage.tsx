@@ -1,5 +1,6 @@
 // TodayPage - Daily calendar view
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { DayCalendar } from '../components/calendar/DayCalendar';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -10,13 +11,29 @@ import { navigation, formatDate, isTaskInRange } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const TodayPage: React.FC = () => {
+    const location = useLocation();
     const { settings } = useSettings();
     const [showCompleted, setShowCompleted] = useState(settings.showCompletedByDefault);
-    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Get initial date from router state or default to today
+    const initialDate = useMemo(() => {
+        const state = location.state as { selectedDate?: string } | null;
+        return state?.selectedDate ? new Date(state.selectedDate) : new Date();
+    }, [location.state]);
+
+    const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+    // Update currentDate when navigating from another page with a new date
+    useEffect(() => {
+        const state = location.state as { selectedDate?: string } | null;
+        if (state?.selectedDate) {
+            setCurrentDate(new Date(state.selectedDate));
+        }
+    }, [location.state]);
 
     const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,

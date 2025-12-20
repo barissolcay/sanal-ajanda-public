@@ -141,8 +141,8 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             </div>
 
                                                             {/* Back */}
-                                                            <div className="overdue-flip-back rounded text-[10px] font-bold">
-                                                                <span>😭 Unuttun?!</span>
+                                                            <div className="overdue-flip-back rounded text-xs font-bold">
+                                                                <span>😭 Unuttun mu beni?!</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -217,8 +217,8 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             </div>
 
                                                             {/* Back */}
-                                                            <div className="overdue-flip-back rounded text-[10px] font-bold flex-col gap-0.5 leading-tight p-0.5">
-                                                                <span>😭 Unuttun?</span>
+                                                            <div className="overdue-flip-back rounded text-xs font-bold flex-col gap-0.5 leading-tight p-0.5">
+                                                                <span>😭 Unuttun mu beni?!</span>
                                                                 <span className="font-normal opacity-70">{formatTime(task.startTime!)}</span>
                                                             </div>
                                                         </div>

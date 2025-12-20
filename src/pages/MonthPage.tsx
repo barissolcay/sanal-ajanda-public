@@ -1,7 +1,7 @@
 // MonthPage - Monthly calendar view
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, AlertTriangle, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { MonthCalendar } from '../components/calendar/MonthCalendar';
@@ -15,14 +15,30 @@ import type { Task } from '../domain/types';
 
 export const MonthPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { settings } = useSettings();
     const [showCompleted, setShowCompleted] = useState(settings.showCompletedByDefault);
-    const [currentDate, setCurrentDate] = useState(new Date());
+
+    // Get initial date from router state or default to today
+    const initialDate = useMemo(() => {
+        const state = location.state as { selectedMonth?: string } | null;
+        return state?.selectedMonth ? new Date(state.selectedMonth) : new Date();
+    }, [location.state]);
+
+    const [currentDate, setCurrentDate] = useState(initialDate);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+    // Update currentDate when navigating from another page with a new month
+    useEffect(() => {
+        const state = location.state as { selectedMonth?: string } | null;
+        if (state?.selectedMonth) {
+            setCurrentDate(new Date(state.selectedMonth));
+        }
+    }, [location.state]);
 
     const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
@@ -86,8 +102,10 @@ export const MonthPage: React.FC = () => {
     };
 
     const handleGoToDay = () => {
-        // Navigate to Today page (which shows day view)
-        navigate('/');
+        // Navigate to Today page with selected date
+        if (selectedDate) {
+            navigate('/', { state: { selectedDate: selectedDate.toISOString() } });
+        }
     };
 
     const handleCreateTask = async (data: TaskFormData) => {
@@ -224,7 +242,7 @@ export const MonthPage: React.FC = () => {
                                             return (
                                                 <div
                                                     key={task.id}
-                                                    onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                    onClick={() => setSelectedTask(task)}
                                                     className="overdue-flip-container h-12 cursor-pointer"
                                                 >
                                                     <div className="overdue-flip-inner">
@@ -264,7 +282,7 @@ export const MonthPage: React.FC = () => {
                                                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:scale-[1.01] ${isHighPriority ? 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : ''
                                                     }`}
                                                 style={taskStyle}
-                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                onClick={() => setSelectedTask(task)}
                                             >
                                                 <div className="w-5 h-5 rounded-full border-2 border-slate-500" />
                                                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -294,7 +312,7 @@ export const MonthPage: React.FC = () => {
                                             return (
                                                 <div
                                                     key={task.id}
-                                                    onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                    onClick={() => setSelectedTask(task)}
                                                     className="overdue-flip-container h-16 cursor-pointer"
                                                 >
                                                     <div className="overdue-flip-inner">
@@ -342,7 +360,7 @@ export const MonthPage: React.FC = () => {
                                                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer hover:scale-[1.01] ${isHighPriority ? 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : ''
                                                     }`}
                                                 style={taskStyle}
-                                                onClick={() => handleTaskStatusChange(task.id, 'done')}
+                                                onClick={() => setSelectedTask(task)}
                                             >
                                                 <div className="w-5 h-5 rounded-full border-2 border-slate-500" />
                                                 <div className="flex-1 min-w-0">

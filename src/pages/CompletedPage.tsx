@@ -1,6 +1,5 @@
 // CompletedPage - Completed tasks view
 import React, { useState, useMemo } from 'react';
-import { clsx } from 'clsx';
 import { TopBar } from '../components/nav/TopBar';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -100,11 +99,10 @@ export const CompletedPage: React.FC = () => {
                 onSearchChange={setSearchQuery}
             />
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-                {/* Main content */}
-                <div className="flex-1 flex flex-col overflow-hidden m-2 md:m-4 md:mr-2">
+            <div className="flex-1 overflow-hidden">
+                <div className="h-full overflow-y-auto p-4">
                     {/* Filter buttons */}
-                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 md:pb-0 md:flex-wrap no-scrollbar">
+                    <div className="flex gap-2 mb-4 overflow-x-auto pb-2 md:pb-0 md:flex-wrap no-scrollbar max-w-3xl mx-auto">
                         {filterOptions.map((option) => (
                             <button
                                 key={option.id}
@@ -120,7 +118,7 @@ export const CompletedPage: React.FC = () => {
                     </div>
 
                     {/* Task list */}
-                    <div className="flex-1 overflow-y-auto glass-panel p-4">
+                    <div className="max-w-3xl mx-auto glass-panel p-4">
                         <TaskList
                             tasks={filteredTasks}
                             selectedTaskId={selectedTask?.id}
@@ -130,25 +128,17 @@ export const CompletedPage: React.FC = () => {
                         />
                     </div>
                 </div>
+            </div>
 
-                {/* Detail Panel - Mobile: Overlay */}
+            {/* Task Detail Modal */}
+            {selectedTask && (
                 <div
-                    className={clsx(
-                        "transition-all duration-300 ease-in-out z-30",
-                        "md:w-80 md:m-4 md:ml-2 md:static block",
-                        selectedTask ? "fixed inset-0 bg-slate-950/80 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none" : "hidden md:block md:w-0 md:m-0 md:opacity-0 md:overflow-hidden"
-                    )}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
                     onClick={(e) => {
-                        if (window.innerWidth < 768 && e.target === e.currentTarget) {
-                            setSelectedTask(null);
-                        }
+                        if (e.target === e.currentTarget) setSelectedTask(null);
                     }}
                 >
-                    <div className={clsx(
-                        "h-full glass-panel overflow-hidden flex flex-col transition-transform duration-300",
-                        "w-full h-full md:h-full md:w-80",
-                        "p-4 md:p-0"
-                    )}>
+                    <div className="w-full max-w-md max-h-[80vh] overflow-y-auto glass-panel p-0 animate-fadeIn">
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
@@ -158,7 +148,7 @@ export const CompletedPage: React.FC = () => {
                         />
                     </div>
                 </div>
-            </div>
+            )}
 
             <TaskFormModal
                 open={!!editingTask}

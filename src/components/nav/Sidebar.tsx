@@ -21,30 +21,29 @@ import {
     AlertCircle,
 } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
+import { useTasks } from '../../hooks/useTasks';
 import { supabase } from '../../lib/supabaseClient';
 import type { Category } from '../../domain/types';
 import { useSidebar } from '../../context/SidebarContext';
+import { isOverdue } from '../../domain/dateUtils';
 
 interface NavItem {
     to: string;
     icon: React.ReactNode;
     label: string;
     color?: string;
+    showBadge?: boolean;
 }
 
 const viewItems: NavItem[] = [
-    { to: '/', icon: <Calendar className="w-5 h-5" />, label: 'Bugün' },
+    { to: '/', icon: <Sparkles className="w-5 h-5" />, label: 'Anasayfa' },
+    { to: '/today', icon: <Calendar className="w-5 h-5" />, label: 'Bugün' },
     { to: '/week', icon: <CalendarDays className="w-5 h-5" />, label: 'Bu Hafta' },
     { to: '/month', icon: <CalendarRange className="w-5 h-5" />, label: 'Bu Ay' },
     { to: '/year', icon: <CalendarClock className="w-5 h-5" />, label: 'Bu Yıl' },
 ];
 
-const otherItems: NavItem[] = [
-    { to: '/lists', icon: <LayoutGrid className="w-5 h-5" />, label: 'Tüm Listeler' },
-    { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar' },
-    { to: '/completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Tamamlananlar' },
-    { to: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Ayarlar' },
-];
+// Note: otherItems is now generated inside the component to support dynamic badge
 
 // Icon map for dynamic categories
 const iconMap: Record<string, LucideIcon> = {
@@ -64,7 +63,7 @@ const getIconComponent = (iconName: string): React.ReactNode => {
     return <IconComponent className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />;
 };
 
-const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color }) => {
+const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color, showBadge }) => {
     const location = useLocation();
     const isActive = location.pathname === to || (to !== '/' && to !== '/lists' && location.pathname.startsWith(to));
 
@@ -84,7 +83,12 @@ const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color }) => {
             )} style={color ? { color } : undefined}>
                 {icon}
             </span>
-            <span className="font-medium">{label}</span>
+            <span className="font-medium flex items-center gap-2">
+                {label}
+                {showBadge && (
+                    <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                )}
+            </span>
         </NavLink>
     );
 };
@@ -106,8 +110,14 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     const { categories, loading } = useCategories();
+    const { tasks } = useTasks({ showCompleted: false });
     const { isOpen, close } = useSidebar();
     const location = useLocation();
+
+    // Count overdue tasks
+    const overdueCount = React.useMemo(() => {
+        return tasks.filter(task => task.status !== 'done' && isOverdue(task)).length;
+    }, [tasks]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -133,6 +143,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         label: cat.name,
         color: cat.color,
     }));
+
+    // Dynamic otherItems with overdue badge
+    const otherItems: NavItem[] = [
+        { to: '/lists', icon: <LayoutGrid className="w-5 h-5" />, label: 'Tüm Listeler' },
+        { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar', showBadge: overdueCount > 0 },
+        { to: '/completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Tamamlananlar' },
+        { to: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Ayarlar' },
+    ];
 
     return (
         <>

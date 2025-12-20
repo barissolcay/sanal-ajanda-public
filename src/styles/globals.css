@@ -321,19 +321,46 @@
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
-  transition-delay: 2s;
-  /* Wait 2s before flipping back (closing) */
+  transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
   transform-style: preserve-3d;
 }
 
-/* Flip on Hover, Focus (Keyboard/Mobile Tap), and Active (Touch) */
+/* Desktop: Flip on Hover and Focus */
 .overdue-flip-container:hover .overdue-flip-inner,
-.overdue-flip-container:focus-within .overdue-flip-inner,
-.overdue-flip-container:active .overdue-flip-inner {
+.overdue-flip-container:focus-within .overdue-flip-inner {
   transform: rotateY(180deg);
-  transition-delay: 0s;
-  /* Flip immediately when activated */
+}
+
+/* Mobile: Periodic auto-flip animation every 7 seconds */
+@media (max-width: 768px) {
+  .overdue-flip-inner {
+    transition: none;
+    animation: periodic-flip 7s ease-in-out infinite;
+  }
+
+  .overdue-flip-container:hover .overdue-flip-inner,
+  .overdue-flip-container:focus-within .overdue-flip-inner {
+    animation-play-state: paused;
+    transform: rotateY(180deg);
+  }
+}
+
+/* Periodic flip keyframes for mobile */
+@keyframes periodic-flip {
+
+  0%,
+  70% {
+    transform: rotateY(0deg);
+  }
+
+  78%,
+  92% {
+    transform: rotateY(180deg);
+  }
+
+  100% {
+    transform: rotateY(0deg);
+  }
 }
 
 .overdue-flip-front,

@@ -54,9 +54,9 @@ export const WeekPage: React.FC = () => {
     const handleNext = () => setCurrentDate(navigation.nextWeek(currentDate));
     const handleToday = () => setCurrentDate(new Date());
 
-    const handleDayClick = () => {
-        // Navigate to today page
-        navigate('/');
+    const handleDayClick = (day: Date) => {
+        // Navigate to today page with the selected date
+        navigate('/', { state: { selectedDate: day.toISOString() } });
     };
 
     const handleCreateTask = async (data: TaskFormData) => {
