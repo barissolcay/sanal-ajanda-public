@@ -41,14 +41,20 @@ export const DashboardPage: React.FC = () => {
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
 
-        // Today's tasks
-        const todayTasks = pendingTasks.filter(t => {
-            const taskDate = new Date(t.startDate);
-            return taskDate >= todayStart && taskDate <= todayEnd;
-        });
-        const todayTotal = todayTasks.length;
+        // Helper to check if task is in date range (same as TodayPage)
+        const isInRange = (task: Task, rangeStart: Date, rangeEnd: Date): boolean => {
+            const taskStartDate = new Date(task.startDate);
+            taskStartDate.setHours(0, 0, 0, 0);
+            const taskEndDate = task.endDate ? new Date(task.endDate) : taskStartDate;
+            taskEndDate.setHours(23, 59, 59, 999);
+            return taskEndDate >= rangeStart && taskStartDate <= rangeEnd;
+        };
 
-        // Completed today
+        // Today's pending tasks (matching TodayPage logic)
+        const todayPendingTasks = pendingTasks.filter(t => isInRange(t, todayStart, todayEnd));
+        const todayTotal = todayPendingTasks.length;
+
+        // Completed today (based on updatedAt)
         const todayCompleted = allTasks.filter(t => {
             if (t.status !== 'done') return false;
             const completedDate = new Date(t.updatedAt);
@@ -56,16 +62,10 @@ export const DashboardPage: React.FC = () => {
         }).length;
 
         // Week pending
-        const weekPending = pendingTasks.filter(t => {
-            const taskDate = new Date(t.startDate);
-            return taskDate >= weekStart && taskDate <= weekEnd;
-        }).length;
+        const weekPending = pendingTasks.filter(t => isInRange(t, weekStart, weekEnd)).length;
 
         // Month pending
-        const monthPending = pendingTasks.filter(t => {
-            const taskDate = new Date(t.startDate);
-            return taskDate >= monthStart && taskDate <= monthEnd;
-        }).length;
+        const monthPending = pendingTasks.filter(t => isInRange(t, monthStart, monthEnd)).length;
 
         // Overdue
         const overduePending = pendingTasks.filter(t => isOverdue(t)).length;
