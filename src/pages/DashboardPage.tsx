@@ -9,6 +9,7 @@ import { HeroCard } from '../components/dashboard/HeroCard';
 import { KPIGrid } from '../components/dashboard/KPIGrid';
 import { UpcomingTasks } from '../components/dashboard/UpcomingTasks';
 import { ProgressCard } from '../components/dashboard/ProgressCard';
+import { DailySummaryCard } from '../components/dashboard/DailySummaryCard';
 import { AchievementsModal, getAchievements } from '../components/dashboard/AchievementBadges';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -25,8 +26,8 @@ export const DashboardPage: React.FC = () => {
     const [showAchievements, setShowAchievements] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    const { tasks: allTasks, updateTaskStatus, deleteTask } = useTasks({ showCompleted: true });
-    const { tasks: pendingTasks } = useTasks({ showCompleted: false });
+    const { tasks: allTasks, updateTaskStatus, deleteTask, refreshTasks: refreshAllTasks } = useTasks({ showCompleted: true });
+    const { tasks: pendingTasks, refreshTasks: refreshPendingTasks } = useTasks({ showCompleted: false });
 
     // Today's date formatted
     const todayFormatted = format(new Date(), "EEEE, d MMMM yyyy", { locale: tr });
@@ -53,6 +54,16 @@ export const DashboardPage: React.FC = () => {
         // Today's pending tasks (matching TodayPage logic)
         const todayPendingTasks = pendingTasks.filter(t => isInRange(t, todayStart, todayEnd));
         const todayTotal = todayPendingTasks.length;
+
+        // Priority count (tasks with priority === 2, which is high priority)
+        const priorityCount = todayPendingTasks.filter(t => t.priority === 2).length;
+
+        // Deadline today count (tasks whose endDate is today)
+        const deadlineTodayCount = todayPendingTasks.filter(t => {
+            const endDate = t.endDate ? new Date(t.endDate) : null;
+            if (!endDate) return false;
+            return endDate >= todayStart && endDate <= todayEnd;
+        }).length;
 
         // Completed today (based on updatedAt)
         const todayCompleted = allTasks.filter(t => {
@@ -140,6 +151,8 @@ export const DashboardPage: React.FC = () => {
             currentStreak,
             longestStreak,
             todayHasCompleted,
+            priorityCount,
+            deadlineTodayCount,
         };
     }, [allTasks, pendingTasks]);
 
@@ -165,6 +178,8 @@ export const DashboardPage: React.FC = () => {
     const handleStatusChange = async (status: Task['status']) => {
         if (selectedTask) {
             await updateTaskStatus(selectedTask.id, status);
+            // Refresh both task lists to ensure UI is in sync
+            await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
             setSelectedTask(null);
         }
     };
@@ -172,6 +187,8 @@ export const DashboardPage: React.FC = () => {
     const handleDeleteTask = async () => {
         if (selectedTask) {
             await deleteTask(selectedTask.id);
+            // Refresh both task lists to ensure UI is in sync
+            await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
             setSelectedTask(null);
         }
     };
@@ -217,15 +234,21 @@ export const DashboardPage: React.FC = () => {
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
 
-                    {/* Hero Card */}
                     <HeroCard
-                        todayTotal={stats.todayTotal + stats.todayCompleted}
+                        todayTotal={stats.todayPending + stats.todayCompleted}
                         todayCompleted={stats.todayCompleted}
-                        upcomingCount={stats.upcomingCount}
-                        overdueCount={stats.overduePending}
                         currentStreak={stats.currentStreak}
-                        todayHasCompleted={stats.todayHasCompleted}
                     />
+
+                    {/* Daily Summary Card */}
+                    <DailySummaryCard
+                        totalTasks={stats.todayPending + stats.todayCompleted}
+                        completedTasks={stats.todayCompleted}
+                        highPriorityCount={stats.priorityCount}
+                        deadlineTodayCount={stats.deadlineTodayCount}
+                        overdueCount={stats.overduePending}
+                    />
+
 
                     {/* Two Column Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -252,7 +275,6 @@ export const DashboardPage: React.FC = () => {
                             <UpcomingTasks
                                 tasks={pendingTasks}
                                 onTaskClick={setSelectedTask}
-                                maxItems={3}
                             />
 
                             {/* Progress Card */}
