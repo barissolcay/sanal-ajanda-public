@@ -1,116 +1,137 @@
-# Sanal Ajandam V2
+# Sanal Ajanda
 
-Supabase destekli, Sci-Fi temalı, PWA uyumlu tek kullanıcılı ajanda uygulaması.
+Supabase destekli, PWA uyumlu kişisel ajanda uygulaması. Görevleri günlük, haftalık, aylık ve yıllık görünümlerde takip edebilir; kategori, öncelik, durum ve tarih aralığına göre düzenleyebilirsiniz.
 
-![Sanal Ajandam V2](https://via.placeholder.com/800x400/0f172a/6366f1?text=Sanal+Ajandam+V2)
+## Özellikler
 
-## 🚀 Özellikler
+- Supabase Auth ile e-posta/şifre girişi
+- Kullanıcı bazlı görev ve kategori verileri
+- Row Level Security ile her kullanıcının sadece kendi verisini görmesi
+- Günlük, haftalık, aylık ve yıllık takvim ekranları
+- Özel listeler/kategoriler
+- PWA desteği
+- Ayarların tarayıcıda yerel tutulması
 
-- **Supabase Backend**: Veriler bulutta güvenle saklanır, cihazlar arası (PC/Mobil) anında senkronize olur.
-- **Tek Kullanıcı Modu**: Sadece belirlenen e-posta/şifre ile giriş yapılabilir.
-- **Futuristik Tasarım**: Uzay teknolojisi hissiyatı, glassmorphism paneller, neon accent renkler.
-- **PWA Desteği**: Masaüstü ve telefona uygulama olarak yüklenebilir.
-- **Çoklu Takvim**: Günlük, Haftalık, Aylık, Yıllık görünümler.
+## Teknolojiler
 
-## 🛠 Kurulum ve Başlangıç
+- React 18
+- Vite
+- TypeScript
+- Tailwind CSS
+- Supabase
+- Vitest
 
-Bu proje Supabase gerektirir. Lütfen aşağıdaki adımları sırasıyla uygulayın.
+## Hızlı Kurulum
 
-### 1. Supabase Projesi Oluşturma
+Gerekenler:
 
-1.  [supabase.com](https://supabase.com/) adresine gidip giriş yapın ve yeni bir proje oluşturun.
-2.  Project Settings > API kısmından `URL` ve `anon` public key değerlerini kopyalayın.
-3.  Proje ana dizininde `.env` (veya `.env.local`) dosyası oluşturun ve bu değerleri yapıştırın:
+- Node.js 18 veya üzeri
+- npm
+- Bir Supabase hesabı
 
-    ```env
-    VITE_SUPABASE_URL=https://your-project-url.supabase.co
-    VITE_SUPABASE_ANON_KEY=your-anon-key
-    ```
-4.  Bağımlılıkları yükleyin:
+Projeyi indirip bağımlılıkları kurun:
 
-    ```bash
-    npm install
-    ```
-
-### 2. Tabloları Oluşturma (SQL Editor)
-
-Supabase panelinde **SQL Editor**'ü açın ve aşağıdaki komutlari çalıştırın:
-
-```sql
--- 1. Tasks Tablosu
-create table public.tasks (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  title text not null,
-  description text,
-  category text,
-  status text check (status in ('pending', 'in_progress', 'done', 'cancelled')),
-  priority smallint,
-  color text,
-  start_date date not null,
-  end_date date,
-  start_time time,
-  end_time time,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
--- 2. Categories Tablosu (Özel listeler için)
-create table public.categories (
-  id text primary key, -- 'custom_...'
-  user_id uuid references auth.users not null,
-  name text not null,
-  icon text,
-  color text,
-  is_default boolean default false,
-  "order" integer default 0
-);
-
--- 3. Row Level Security (RLS) Açma
-alter table public.tasks enable row level security;
-alter table public.categories enable row level security;
-
--- 4. RLS Politikaları (Sadece kendi verisini görsün)
-create policy "Users can view own tasks" on tasks for select using (auth.uid() = user_id);
-create policy "Users can insert own tasks" on tasks for insert with check (auth.uid() = user_id);
-create policy "Users can update own tasks" on tasks for update using (auth.uid() = user_id);
-create policy "Users can delete own tasks" on tasks for delete using (auth.uid() = user_id);
-
-create policy "Users can view own categories" on categories for select using (auth.uid() = user_id);
-create policy "Users can insert own categories" on categories for insert with check (auth.uid() = user_id);
-create policy "Users can update own categories" on categories for update using (auth.uid() = user_id);
-create policy "Users can delete own categories" on categories for delete using (auth.uid() = user_id);
+```bash
+git clone https://github.com/barissolcay/sanal-ajanda-public.git
+cd sanal-ajanda-public
+npm install
 ```
 
-### 3. Kullanıcı Oluşturma & Ayarlar
+Örnek ortam dosyasını kopyalayın:
 
-1.  **Authentication > Settings** kısmına gidin.
-    *   **Disable Signups**: Başkalarının kayıt olmasını engellemek için kapatın.
-2.  **Authentication > Users** kısmından **Invite User** diyerek kendi e-postanızı ekleyin (veya "Add User" ile manuel ekleyin ve şifre belirleyin).
-3.  Uygulamayı başlatın:
+```bash
+cp .env.example .env
+```
 
-    ```bash
-    npm run dev
-    ```
-4.  Belirlediğiniz e-posta ve şifre ile giriş yapın.
+Windows PowerShell kullanıyorsanız:
 
-## 📱 Vercel Deploy
+```powershell
+Copy-Item .env.example .env
+```
 
-Projeyi Vercel'e deploy ederken **Settings > Environment Variables** kısmına şunları eklemeyi unutmayın:
+`.env` dosyasını kendi Supabase bilgilerinizle doldurun:
 
-*   `VITE_SUPABASE_URL`
-*   `VITE_SUPABASE_ANON_KEY`
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
-## 📂 Proje Yapısı
+Sonra uygulamayı başlatın:
 
-Backend katmanı (Repository) artık Dexie yerine Supabase kullanmaktadır.
+```bash
+npm run dev
+```
 
-*   `src/lib/supabaseClient.ts`: Supabase bağlantısı
-*   `src/data/taskRepository.ts`: Supabase üzerinden görev işlemleri
-*   `src/data/categoryRepository.ts`: Supabase üzerinden kategori işlemleri
-*   `src/data/settingsRepository.ts`: LocalStorage (Ayarlar yerel kalır)
-*   `src/pages/LoginPage.tsx`: Giriş ekranı
+Vite terminalde yerel adresi gösterecek. Genelde `http://localhost:5173` olur.
 
-## 📝 Lisans
+## Supabase Kurulumu
 
-MIT License
+### 1. Proje Oluşturma
+
+1. [Supabase](https://supabase.com/) hesabınıza girin.
+2. Yeni bir proje oluşturun.
+3. `Project Settings > API` ekranından `Project URL` ve `anon public` key değerlerini alın.
+4. Bu değerleri `.env` dosyasındaki `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` alanlarına yazın.
+
+Güvenlik notu: Frontend projelerinde `VITE_` ile başlayan değişkenler tarayıcıya gider. Bu projede sadece Supabase `anon public` key kullanılmalıdır. `service_role`, secret key, JWT secret veya kişisel token değerlerini asla `.env` dosyasına frontend değişkeni olarak koymayın ve GitHub'a göndermeyin.
+
+### 2. Veritabanı Tabloları
+
+Supabase panelinde `SQL Editor` ekranını açın ve [supabase/schema.sql](supabase/schema.sql) dosyasındaki SQL'i çalıştırın.
+
+Bu SQL şunları oluşturur:
+
+- `public.tasks`
+- `public.categories`
+- Gerekli indeksler
+- Row Level Security politikaları
+- `authenticated` rolü için gerekli tablo izinleri
+
+### 3. Authentication Ayarları
+
+Supabase panelinde:
+
+1. `Authentication > Providers > Email` sağlayıcısının açık olduğundan emin olun.
+2. Sadece kendi kullanıcınız kullanacaksa `Authentication > Settings` altında yeni kayıtları kapatabilirsiniz.
+3. `Authentication > Users` ekranından `Add user` veya `Invite user` ile kullanıcı oluşturun.
+4. Uygulamaya bu e-posta ve şifreyle giriş yapın.
+
+Arkadaşınız kendi Supabase projesini açarsa sizin veritabanınıza veya kullanıcılarınıza erişmez. Herkes kendi `.env` değerleriyle kendi Supabase projesine bağlanır.
+
+## Komutlar
+
+```bash
+npm run dev      # geliştirme sunucusu
+npm run build    # production build
+npm run preview  # build sonucunu yerelde önizleme
+npm run test     # testleri çalıştır
+```
+
+## Deploy
+
+Vercel, Netlify veya benzeri bir platforma deploy ederken environment variable olarak şunları ekleyin:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Deploy sonrası Supabase tarafında gerekirse `Authentication > URL Configuration` bölümünden site adresinizi allowed redirect/site URL olarak ekleyin.
+
+## Proje Yapısı
+
+- `src/lib/supabaseClient.ts`: Supabase client kurulumu
+- `src/data/taskRepository.ts`: Görev verilerinin Supabase işlemleri
+- `src/data/categoryRepository.ts`: Kategori verilerinin Supabase işlemleri
+- `src/data/settingsRepository.ts`: Yerel ayarlar
+- `src/pages/LoginPage.tsx`: Giriş ekranı
+- `supabase/schema.sql`: Yeni Supabase projesi için veritabanı şeması
+
+## Public Repo Güvenlik Notları
+
+- `.env` dosyası `.gitignore` içindedir ve repoya gönderilmemelidir.
+- `.env.example` sadece örnek değerler içerir.
+- Supabase `service_role` key frontend uygulamalarda kullanılmaz.
+- Public repoyu fork eden kişi kendi Supabase projesini ve kendi ortam değişkenlerini oluşturmalıdır.
+
+## Lisans
+
+MIT

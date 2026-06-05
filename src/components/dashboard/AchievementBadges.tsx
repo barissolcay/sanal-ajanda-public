@@ -2,8 +2,7 @@
 import React from 'react';
 import {
     Trophy, Flame, Target, Zap, Calendar, Star, Lock, X,
-    Rocket, Crown, Medal, Award, Heart, Coffee, Moon, Sun,
-    Sparkles, Gift, TrendingUp, Clock
+    Rocket, Crown, Medal, Award, Sun, TrendingUp
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 

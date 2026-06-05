@@ -16,7 +16,6 @@ export const HeroCard: React.FC<HeroCardProps> = ({
     userName = 'Barış',
 }) => {
     const progress = todayTotal > 0 ? (todayCompleted / todayTotal) * 100 : 0;
-    const remaining = todayTotal - todayCompleted;
 
     // SVG progress ring
     const radius = 44;
