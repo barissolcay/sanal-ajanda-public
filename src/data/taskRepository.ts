@@ -1,21 +1,15 @@
-// Task Repository - Supabase Implementation
+// Supabase-backed task repository.
 import { supabase } from '../lib/supabaseClient';
 import type { Task } from '../domain/types';
 
-// Helper to get current user ID
 async function getCurrentUserId(): Promise<string> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
     return user.id;
 }
 
-// Map Supabase response to domain Task
-// (Supabase returns ISO strings for dates which matches our type)
+// Convert nullable database fields and snake_case columns to the domain shape.
 function mapToDomain(item: any): Task {
-    // Ensure all required fields are present
-    // Supabase returns null for optional fields, we might need undefined?
-    // Our domain type uses '?' which is undefined. JSON is null.
-    // We should convert null to undefined for cleaner strict typing if needed.
     return {
         id: item.id,
         title: item.title,
@@ -24,11 +18,7 @@ function mapToDomain(item: any): Task {
         status: item.status,
         priority: item.priority,
         color: item.color || undefined,
-        startDate: item.startDate || item.start_date, // Handle snake_case from DB if I defined it that way, but waiting, user asked for specific cols.
-        // User asked for "start_date" in DB. But code uses "startDate".
-        // I should stick to camelCase for the frontend and snake_case for the DB ideally, 
-        // OR just use snake_case for both if user permits, but "Mevcut projeyi bozmadan" -> keep types camelCase.
-        // So I need mapping.
+        startDate: item.startDate || item.start_date,
         endDate: item.end_date || undefined,
         startTime: item.start_time || undefined,
         endTime: item.end_time || undefined,
@@ -37,12 +27,10 @@ function mapToDomain(item: any): Task {
     };
 }
 
-// Map Domain Task to Supabase DB Row
+// Convert the domain shape to the database row format.
 function mapToDb(task: Partial<Task>, userId: string) {
     return {
-        // id: task.id, // Let DB generate ID if new? Or we generate? User said "id (UUID, primary key, default uuid_generate_v4())"
-        // But current repo generated ID. I can send it if I want.
-        // Let's send it if it exists.
+        // Preserve an existing ID; PostgreSQL generates one for new tasks.
         ...(task.id ? { id: task.id } : {}),
         user_id: userId,
         title: task.title,
@@ -55,8 +43,7 @@ function mapToDb(task: Partial<Task>, userId: string) {
         end_date: task.endDate,
         start_time: task.startTime,
         end_time: task.endTime,
-        updated_at: new Date().toISOString(), // Always update this
-        // created_at is default now() in DB
+        updated_at: new Date().toISOString(),
     };
 }
 
@@ -65,10 +52,6 @@ function mapToDb(task: Partial<Task>, userId: string) {
  */
 export async function createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
     const userId = await getCurrentUserId();
-
-    // We can generate ID here or let Supabase do it. 
-    // To return the full object immediately without a refetch, 
-    // it's often easier to let Supabase return it.
 
     const dbPayload = mapToDb(taskData, userId);
 
@@ -92,7 +75,7 @@ export async function createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'upda
 export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>): Promise<Task | undefined> {
     const userId = await getCurrentUserId();
 
-    // We need to map camelCase updates to snake_case DB columns
+    // Map only supplied domain fields to their database columns.
     const dbUpdates: any = {
         updated_at: new Date().toISOString(),
     };
@@ -102,7 +85,7 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-    // Color: handle both null (clear) and string (set)
+    // Preserve an explicit request to clear the optional color.
     if ('color' in updates) dbUpdates.color = updates.color || null;
     if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
     if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
@@ -113,13 +96,12 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
         .from('tasks')
         .update(dbUpdates)
         .eq('id', id)
-        .eq('user_id', userId) // RLS handles this, but extra safety
+        .eq('user_id', userId) // Defense in depth in addition to RLS.
         .select()
         .single();
 
     if (error) {
         console.error('Error updating task:', error);
-        // If row not found (e.g. wrong user), it might return error
         return undefined;
     }
 
@@ -163,7 +145,7 @@ export async function getAllTasks(): Promise<Task[]> {
     const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .order('start_date', { ascending: true }); // Default sort
+        .order('start_date', { ascending: true });
 
     if (error) {
         console.error('Error fetching tasks:', error);
@@ -175,26 +157,14 @@ export async function getAllTasks(): Promise<Task[]> {
 
 /**
  * Get tasks in date range
- * Note: existing logic does client-side precision filtering in the hook.
- * We will fetch based on start_date range here to be efficient.
+ * The hook applies the final client-side date filtering.
  */
 export async function getTasksInDateRange(startDate: string, endDate: string): Promise<Task[]> {
     const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        // Logic: (start_date <= endDate) AND (end_date >= startDate) roughly covers overlap
-        // But for simplicity/performance in Single User mode, just fetching broadly is fine.
-        // Let's rely on getAllTasks logic of fetching all mostly, 
-        // OR add a basic filter: start_date >= startDate - margin?
-        // The original code:
-        // .where('startDate').between(startDate, endDate) OR .where('endDate')...
-        // Supabase equivalent:
+        // Limit the candidate set to tasks that may overlap the requested interval.
         .or(`start_date.gte.${startDate},end_date.gte.${startDate}`)
-        // This query syntax for OR with range is tricky in simple string format.
-        // Let's keep it simple: Fetch tasks that START in the range + tasks that might overlap.
-        // Actually, for a single user agenda, fetching ALL tasks is usually < 50ms for a few thousand rows.
-        // Let's just define a broad filter or return all tasks if needed, 
-        // but let's try to match the "tasks starting or ending in range" idea.
         .or(`start_date.lte.${endDate},end_date.gte.${startDate}`)
         .order('start_date', { ascending: true });
 

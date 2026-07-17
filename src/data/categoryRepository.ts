@@ -186,7 +186,7 @@ export async function createCategory(categoryData: Omit<Category, 'id' | 'order'
 export async function updateCategory(id: string, updates: Partial<Omit<Category, 'id' | 'isDefault'>>): Promise<Category | undefined> {
     const userId = await getCurrentUserId();
 
-    // Ensure defaults exist before updating (in case we process an update on a default cat that isn't in DB yet)
+    // Ensure default categories exist before applying an update.
     await ensureDefaultsExist(userId);
 
     const dbUpdates: any = {};
@@ -219,8 +219,7 @@ export async function updateCategory(id: string, updates: Partial<Omit<Category,
  * Delete a category (only non-default)
  */
 export async function deleteCategory(id: string): Promise<boolean> {
-    // Check if default first? Supabase RLS policies could prevent this, or just logic here.
-    // Ideally we fetch it first.
+    // Default categories are protected from deletion.
     const cat = await getCategoryById(id);
     if (!cat || cat.isDefault) return false;
 
@@ -247,7 +246,7 @@ export async function deleteCategory(id: string): Promise<boolean> {
 export async function reorderCategories(categoryIds: string[]): Promise<void> {
     const userId = await getCurrentUserId();
 
-    // Naively update one by one. Supabase RPC is better but this works for few categories.
+    // Category lists are small, so sequential updates avoid requiring an RPC.
     for (let i = 0; i < categoryIds.length; i++) {
         await supabase
             .from('categories')
@@ -263,16 +262,9 @@ export async function reorderCategories(categoryIds: string[]): Promise<void> {
 export async function resetCategories(): Promise<void> {
     const userId = await getCurrentUserId();
 
-    // Delete all custom, or all? Logic says "Reset".
-    // Let's delete all and re-insert defaults.
-
-    // 1. Move tasks
-    // This logic is complex to do purely via client if we don't know what is deleted.
-    // Simplified: Delete all categories for user. Re-insert defaults.
-
+    // Replace the user's categories with the default set.
     await supabase.from('categories').delete().eq('user_id', userId);
 
-    // Insert defaults
     const defaultsWithUser = DEFAULT_CATEGORIES.map(c => ({
         id: c.id,
         user_id: userId,

@@ -56,14 +56,11 @@ export const DailySummaryCard: React.FC<DailySummaryCardProps> = ({
             details.push(`${overdueCount} görevin süresi geçmiş durumda`);
         }
 
-        // Combine details
         if (details.length > 0) {
             const detailText = details.join(', ');
-            // Capitalize first letter of detail text if needed, but usually it flows after a period or comma
             parts.push(`Bu görevlerden ${detailText}.`);
         }
 
-        // Encouragement / Call to action
         if (pending > 0) {
             parts.push(`Kalan ${pending} görevi tamamlamak için harika bir zaman.`);
         }
