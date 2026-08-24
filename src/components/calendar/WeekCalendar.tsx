@@ -21,6 +21,7 @@ export interface WeekCalendarProps {
     weekStartsOn: 0 | 1;
     onTaskClick?: (task: Task) => void;
     onDayClick?: (date: Date) => void;
+    onTaskDrop?: (taskId: string, targetDate: Date) => void;
     selectedTaskId?: string;
 }
 
@@ -30,10 +31,12 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     weekStartsOn,
     onTaskClick,
     onDayClick,
+    onTaskDrop,
     selectedTaskId,
 }) => {
     const { getCategoryColor } = useCategories();
     const weekDays = getWeekDays(date, weekStartsOn);
+    const [dragOverDay, setDragOverDay] = React.useState<string | null>(null);
 
     const getTasksForDay = (day: Date) => {
         return tasks.filter(task => isTaskOnDate(task, day));
@@ -46,6 +49,32 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
             backgroundColor: `${color}30`,
             borderColor: `${color}60`,
         };
+    };
+
+    const handleDragStart = (e: React.DragEvent, taskId: string) => {
+        e.dataTransfer.setData('text/plain', taskId);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, dayIso: string) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverDay !== dayIso) {
+            setDragOverDay(dayIso);
+        }
+    };
+
+    const handleDragLeave = () => {
+        setDragOverDay(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetDate: Date) => {
+        e.preventDefault();
+        setDragOverDay(null);
+        const taskId = e.dataTransfer.getData('text/plain');
+        if (taskId && onTaskDrop) {
+            onTaskDrop(taskId, targetDate);
+        }
     };
 
     return (
@@ -71,7 +100,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                     className={clsx(
                                         'inline-flex items-center justify-center w-8 h-8 mt-1 rounded-full text-sm font-medium transition-colors',
                                         isToday(day)
-                                            ? 'bg-indigo-500 text-white'
+                                            ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/40'
                                             : 'text-slate-200 hover:bg-slate-800/60'
                                     )}
                                 >
@@ -84,6 +113,8 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                     {/* Week content */}
                     <div className="flex-1 grid grid-cols-7 overflow-hidden">
                         {weekDays.map((day) => {
+                            const dayIso = day.toISOString();
+                            const isDragOver = dragOverDay === dayIso;
                             const dayTasks = getTasksForDay(day);
                             const allDayTasks = dayTasks.filter(t => !hasTime(t));
                             const timedTasks = dayTasks
@@ -96,10 +127,14 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
 
                             return (
                                 <div
-                                    key={day.toISOString()}
+                                    key={dayIso}
+                                    onDragOver={(e) => handleDragOver(e, dayIso)}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => handleDrop(e, day)}
                                     className={clsx(
-                                        'flex flex-col border-r border-slate-800/40 last:border-r-0 overflow-hidden',
-                                        isToday(day) && 'bg-indigo-500/5'
+                                        'flex flex-col border-r border-slate-800/40 last:border-r-0 overflow-hidden transition-colors duration-150',
+                                        isToday(day) && 'bg-indigo-500/5',
+                                        isDragOver && 'bg-indigo-500/20 ring-2 ring-inset ring-indigo-400'
                                     )}
                                 >
                                     {/* All tasks in a single scrollable container - dynamic height */}
@@ -114,8 +149,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                 return (
                                                     <div
                                                         key={task.id}
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStart(e, task.id)}
                                                         onClick={() => onTaskClick?.(task)}
-                                                        className="overdue-flip-container cursor-pointer outline-none min-h-[2rem]"
+                                                        className="overdue-flip-container cursor-grab active:cursor-grabbing outline-none min-h-[2rem]"
                                                         tabIndex={0}
                                                         role="button"
                                                     >
@@ -136,7 +173,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             >
                                                                 <div className="flex items-start gap-1 min-w-0">
                                                                     <Clock className="w-3 h-3 text-cyan-400 shrink-0 overdue-icon-sad mt-0.5" />
-                                                                    <span className="break-words leading-tight">{task.title}</span>
+                                                                    <span className="break-words line-clamp-2 leading-tight flex-1 min-w-0">{task.title}</span>
                                                                 </div>
                                                             </div>
 
@@ -152,9 +189,11 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                             return (
                                                 <button
                                                     key={task.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, task.id)}
                                                     onClick={() => onTaskClick?.(task)}
                                                     className={clsx(
-                                                        'w-full px-2 py-1.5 rounded text-xs font-medium text-left border transition-all',
+                                                        'w-full px-2 py-1.5 rounded text-xs font-medium text-left border transition-all cursor-grab active:cursor-grabbing',
                                                         'hover:scale-[1.02] hover:shadow-md',
                                                         selectedTaskId === task.id && 'ring-1 ring-indigo-500',
                                                         task.status === 'done' && 'opacity-50 line-through',
@@ -162,9 +201,13 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                     )}
                                                     style={taskStyle}
                                                 >
-                                                    <div className="flex items-start gap-1 min-w-0">
-                                                        {task.priority === 2 && task.status !== 'done' && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />}
-                                                        <span className="break-words leading-tight">{task.title}</span>
+                                                    <div className="flex items-start gap-1.5 min-w-0">
+                                                        {task.priority === 2 && task.status !== 'done' && (
+                                                            <AlertTriangle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                        )}
+                                                        <span className="break-words line-clamp-2 leading-tight flex-1 min-w-0 text-slate-200">
+                                                            {task.title}
+                                                        </span>
                                                     </div>
                                                 </button>
                                             );
@@ -189,8 +232,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                 return (
                                                     <div
                                                         key={task.id}
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStart(e, task.id)}
                                                         onClick={() => onTaskClick?.(task)}
-                                                        className="overdue-flip-container cursor-pointer mb-1 outline-none min-h-[3rem]"
+                                                        className="overdue-flip-container cursor-grab active:cursor-grabbing mb-1 outline-none min-h-[3rem]"
                                                         tabIndex={0}
                                                         role="button"
                                                     >
@@ -212,7 +257,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                                 <p className="text-[10px] text-zinc-400">{formatTime(task.startTime!)}</p>
                                                                 <div className="flex items-start gap-1 min-w-0">
                                                                     <Clock className="w-3 h-3 text-cyan-400 shrink-0 overdue-icon-sad mt-0.5" />
-                                                                    <span className="text-xs font-medium text-slate-200 break-words leading-tight">{task.title}</span>
+                                                                    <span className="text-xs font-medium text-slate-200 break-words line-clamp-2 leading-tight flex-1 min-w-0">{task.title}</span>
                                                                 </div>
                                                             </div>
 
@@ -229,9 +274,11 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                             return (
                                                 <button
                                                     key={task.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, task.id)}
                                                     onClick={() => onTaskClick?.(task)}
                                                     className={clsx(
-                                                        'w-full px-2 py-1.5 rounded text-left border transition-all',
+                                                        'w-full px-2 py-1.5 rounded text-left border transition-all cursor-grab active:cursor-grabbing',
                                                         'hover:scale-[1.02] hover:shadow-md',
                                                         selectedTaskId === task.id && 'ring-1 ring-indigo-500',
                                                         task.status === 'done' && 'opacity-50',
@@ -240,10 +287,12 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                     style={taskStyle}
                                                 >
                                                     <p className="text-xs text-slate-400">{formatTime(task.startTime!)}</p>
-                                                    <div className="flex items-start gap-1 min-w-0">
-                                                        {task.priority === 2 && task.status !== 'done' && <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />}
+                                                    <div className="flex items-start gap-1.5 min-w-0">
+                                                        {task.priority === 2 && task.status !== 'done' && (
+                                                            <AlertTriangle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                                                        )}
                                                         <p className={clsx(
-                                                            'text-xs font-medium text-slate-200 break-words leading-tight',
+                                                            'text-xs font-medium text-slate-200 break-words line-clamp-2 leading-tight flex-1 min-w-0',
                                                             task.status === 'done' && 'line-through'
                                                         )}>
                                                             {task.title}

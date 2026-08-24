@@ -290,7 +290,7 @@ describe('isOverdue', () => {
         expect(isOverdue(task)).toBe(false);
     });
 
-    it('should return false for task ending today (still has time)', () => {
+    it('should return false for task ending today (remains today task until day ends)', () => {
         const task = createTask({
             startDate: '2025-12-06',
             endDate: '2025-12-06',
@@ -301,15 +301,25 @@ describe('isOverdue', () => {
         expect(isOverdue(task)).toBe(false);
     });
 
-    it('should return true for task that ended earlier today', () => {
+    it('should return false for task that ended earlier today (still today)', () => {
         const task = createTask({
             startDate: '2025-12-06',
             endDate: '2025-12-06',
-            endTime: '14:00', // Ended at 14:00, current time is 15:30
+            endTime: '14:00', // Ended at 14:00, current time is 15:30 - still today, so not overdue yet
             status: 'pending',
         });
 
-        expect(isOverdue(task)).toBe(true);
+        expect(isOverdue(task)).toBe(false);
+    });
+
+    it('should return false for undated/backlog tasks', () => {
+        const task = createTask({
+            startDate: undefined,
+            endDate: undefined,
+            status: 'pending',
+        });
+
+        expect(isOverdue(task)).toBe(false);
     });
 });
 

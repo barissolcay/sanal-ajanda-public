@@ -35,13 +35,12 @@ export const TodayPage: React.FC = () => {
         }
     }, [location.state]);
 
-    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, createTasksBatch, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
 
     // Filter tasks for current day
     const dayTasks = useMemo(() => {
-        // Calculate range for currentDate
         const start = new Date(currentDate);
         start.setHours(0, 0, 0, 0);
         const end = new Date(currentDate);
@@ -61,7 +60,7 @@ export const TodayPage: React.FC = () => {
     }, [tasks, currentDate, searchQuery]);
 
     // Update showCompleted when settings load
-    React.useEffect(() => {
+    useEffect(() => {
         setShowCompleted(settings.showCompletedByDefault);
     }, [settings.showCompletedByDefault]);
 
@@ -78,6 +77,16 @@ export const TodayPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
@@ -176,6 +185,7 @@ export const TodayPage: React.FC = () => {
                     setEditingTask(null);
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
         </div>
     );

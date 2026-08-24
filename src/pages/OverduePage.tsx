@@ -27,8 +27,8 @@ export const OverduePage: React.FC = () => {
     const overdueTasks = useMemo(() => {
         return tasks.filter(task => isOverdue(task)).sort((a, b) => {
             // Sort by date, most recent first
-            const dateA = new Date(a.endDate || a.startDate);
-            const dateB = new Date(b.endDate || b.startDate);
+            const dateA = new Date(a.endDate || a.startDate || '');
+            const dateB = new Date(b.endDate || b.startDate || '');
             return dateB.getTime() - dateA.getTime();
         });
     }, [tasks]);
@@ -55,27 +55,32 @@ export const OverduePage: React.FC = () => {
 
         // Tasks from today (time has passed but date is still today)
         const todayTasks = filteredTasks.filter(t => {
-            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            if (!t.startDate && !t.endDate) return false;
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate || ''));
             return taskDate >= today && taskDate < tomorrow;
         });
 
         const yesterdayTasks = filteredTasks.filter(t => {
-            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            if (!t.startDate && !t.endDate) return false;
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate || ''));
             return taskDate >= yesterday && taskDate < today;
         });
 
         const lastWeekTasks = filteredTasks.filter(t => {
-            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            if (!t.startDate && !t.endDate) return false;
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate || ''));
             return taskDate >= lastWeek && taskDate < yesterday;
         });
 
         const lastMonthTasks = filteredTasks.filter(t => {
-            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            if (!t.startDate && !t.endDate) return false;
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate || ''));
             return taskDate >= lastMonth && taskDate < lastWeek;
         });
 
         const olderTasks = filteredTasks.filter(t => {
-            const taskDate = startOfDay(new Date(t.endDate || t.startDate));
+            if (!t.startDate && !t.endDate) return false;
+            const taskDate = startOfDay(new Date(t.endDate || t.startDate || ''));
             return taskDate < lastMonth;
         });
 

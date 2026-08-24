@@ -31,6 +31,36 @@ import {
 import { tr } from 'date-fns/locale';
 import type { Task } from './types';
 
+export {
+    format,
+    parse,
+    parseISO,
+    startOfDay,
+    endOfDay,
+    startOfWeek,
+    endOfWeek,
+    startOfMonth,
+    endOfMonth,
+    startOfYear,
+    endOfYear,
+    isBefore,
+    isAfter,
+    addDays,
+    addWeeks,
+    addMonths,
+    addYears,
+    subDays,
+    subWeeks,
+    subMonths,
+    subYears,
+    eachDayOfInterval,
+    getDay,
+    getDaysInMonth,
+    isSameDay,
+    isSameMonth,
+    isSameYear,
+};
+
 // ============================================
 // DATE FORMATTING
 // ============================================
@@ -45,7 +75,8 @@ export function formatTime(time: string): string {
     return time.length > 5 ? time.substring(0, 5) : time;
 }
 
-export function formatDateRange(startDate: string, endDate?: string): string {
+export function formatDateRange(startDate?: string, endDate?: string): string {
+    if (!startDate) return 'Süresiz Plan';
     if (!endDate || startDate === endDate) {
         return formatDate(startDate, 'd MMM yyyy');
     }
@@ -69,7 +100,7 @@ export function formatTimeRange(startTime?: string, endTime?: string): string {
  * startDate + (startTime || '00:00')
  */
 export function getTaskStart(task: Task): Date {
-    const dateStr = task.startDate;
+    const dateStr = task.startDate || '1970-01-01';
     let timeStr = task.startTime || '00:00';
     if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
 
@@ -81,7 +112,7 @@ export function getTaskStart(task: Task): Date {
  * (endDate || startDate) + (endTime || '23:59')
  */
 export function getTaskEnd(task: Task): Date {
-    const dateStr = task.endDate || task.startDate;
+    const dateStr = task.endDate || task.startDate || '1970-01-01';
     let timeStr = task.endTime || '23:59';
     if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
 
@@ -142,6 +173,7 @@ export function getDayRange(date: Date): DateRange {
  * Task is in range if: taskEnd >= rangeStart AND taskStart <= rangeEnd
  */
 export function isTaskInRange(task: Task, rangeStart: Date, rangeEnd: Date): boolean {
+    if (!task.startDate) return false;
     const taskStart = getTaskStart(task);
     const taskEnd = getTaskEnd(task);
 
@@ -152,21 +184,33 @@ export function isTaskInRange(task: Task, rangeStart: Date, rangeEnd: Date): boo
 
 /**
  * Check if a task is overdue
- * Overdue if: now > taskEnd AND status !== 'done'
+ * Overdue rule:
+ * 1. Task must not be done or cancelled.
+ * 2. Task must have a scheduled date (undated tasks are not overdue).
+ * 3. The task's entire scheduled date must be in the past (yesterday or earlier).
+ *    A task scheduled for today is NEVER overdue during today, regardless of startTime/endTime.
  */
 export function isOverdue(task: Task): boolean {
     if (task.status === 'done' || task.status === 'cancelled') {
         return false;
     }
+    if (!task.startDate) {
+        return false;
+    }
     const now = new Date();
+    const todayStart = startOfDay(now);
     const taskEnd = getTaskEnd(task);
-    return isAfter(now, taskEnd);
+    const taskEndDate = startOfDay(taskEnd);
+
+    // Overdue if scheduled end date is before today
+    return isBefore(taskEndDate, todayStart);
 }
 
 /**
  * Check if a task occurs on a specific date
  */
 export function isTaskOnDate(task: Task, date: Date): boolean {
+    if (!task.startDate) return false;
     const dayStart = startOfDay(date);
     const dayEnd = endOfDay(date);
     return isTaskInRange(task, dayStart, dayEnd);
@@ -279,8 +323,6 @@ export const navigation = {
 // ============================================
 // COMPARISON HELPERS
 // ============================================
-
-export { isSameDay, isSameMonth, isSameYear, parseISO, startOfDay, endOfDay };
 
 // ============================================
 // TIME SLOT HELPERS

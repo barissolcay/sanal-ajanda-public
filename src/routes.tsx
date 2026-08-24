@@ -11,6 +11,7 @@ import { ListsPage } from './pages/ListsPage';
 import { OverduePage } from './pages/OverduePage';
 import { CompletedPage } from './pages/CompletedPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { NotesPage } from './pages/NotesPage';
 
 export const AppRoutes: React.FC = () => {
     return (
@@ -24,9 +25,10 @@ export const AppRoutes: React.FC = () => {
             <Route path="/month" element={<MonthPage />} />
             <Route path="/year" element={<YearPage />} />
 
-            {/* Lists */}
+            {/* Lists & Notes */}
             <Route path="/lists" element={<ListsPage />} />
             <Route path="/lists/:category" element={<ListsPage />} />
+            <Route path="/notes" element={<NotesPage />} />
 
             {/* Other */}
             <Route path="/overdue" element={<OverduePage />} />

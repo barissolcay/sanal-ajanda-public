@@ -22,16 +22,18 @@ export const ListsPage: React.FC = () => {
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [activeTab, setActiveTab] = useState<string>(category || 'all');
 
-    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, createTasksBatch, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
         hideOverdue: true, // Hide overdue tasks from lists - they show in 'Sessiz Çığlıklar'
     });
 
-    // Filter tasks by category
+    // Filter tasks by category or undated status
     const filteredTasks = useMemo(() => {
         let filtered = tasks;
 
-        if (activeTab !== 'all') {
+        if (activeTab === 'undated') {
+            filtered = filtered.filter(t => !t.startDate);
+        } else if (activeTab !== 'all') {
             filtered = filtered.filter(t => t.category === activeTab);
         }
 
@@ -43,8 +45,8 @@ export const ListsPage: React.FC = () => {
             );
         }
 
-        // Sort by date
-        return filtered.sort((a, b) => a.startDate.localeCompare(b.startDate));
+        // Sort by date (safe for undefined)
+        return filtered.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
     }, [tasks, activeTab, searchQuery]);
 
     // Update activeTab when route changes
@@ -63,12 +65,26 @@ export const ListsPage: React.FC = () => {
     const handleCreateTask = async (data: TaskFormData) => {
         await createTask({
             ...data,
-            category: activeTab === 'all' ? data.category : activeTab,
+            category: (activeTab === 'all' || activeTab === 'undated') ? data.category : activeTab,
+            startDate: activeTab === 'undated' && !data.startDate ? undefined : data.startDate,
             color: (data.color || null) as any,
             endDate: data.endDate || undefined,
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            category: (activeTab === 'all' || activeTab === 'undated') ? d.category : activeTab,
+            startDate: activeTab === 'undated' && !d.startDate ? undefined : d.startDate,
+            color: (d.color || null) as any,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
@@ -113,6 +129,7 @@ export const ListsPage: React.FC = () => {
 
     const tabs = [
         { id: 'all', label: 'Tümü', color: '#64748b' },
+        { id: 'undated', label: 'Planlar / Süresiz', color: '#06b6d4' },
         ...sortedCategories.map(cat => ({
             id: cat.id,
             label: cat.name.replace(' Listesi', ''),
@@ -122,7 +139,11 @@ export const ListsPage: React.FC = () => {
 
     // Get current category name for title
     const currentCategory = categories.find(c => c.id === activeTab);
-    const pageTitle = activeTab === 'all' ? 'Tüm Listeler' : (currentCategory?.name || 'Liste');
+    const pageTitle = activeTab === 'all'
+        ? 'Tüm Listeler'
+        : activeTab === 'undated'
+            ? 'Planlar / Süresiz Görevler'
+            : (currentCategory?.name || 'Liste');
 
     return (
         <div className="flex flex-col h-full">
@@ -206,6 +227,7 @@ export const ListsPage: React.FC = () => {
                     setEditingTask(null);
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
         </div>
     );

@@ -24,10 +24,21 @@ export interface Task {
     status: TaskStatus;
     priority: TaskPriority;
     color?: string;        // Custom color override (hex)
-    startDate: string;     // 'YYYY-MM-DD'
+    startDate?: string;    // 'YYYY-MM-DD' (optional for undated/backlog tasks)
     endDate?: string;      // 'YYYY-MM-DD' (optional, falls back to startDate)
     startTime?: string;    // 'HH:mm'
     endTime?: string;      // 'HH:mm'
+    createdAt: string;     // ISO datetime
+    updatedAt: string;     // ISO datetime
+}
+
+export interface Note {
+    id: string;
+    title: string;
+    content: string;
+    color?: string;        // Hex color
+    isPinned: boolean;
+    tags: string[];
     createdAt: string;     // ISO datetime
     updatedAt: string;     // ISO datetime
 }

@@ -24,7 +24,7 @@ export const YearPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, createTasksBatch, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
     const { getCategoryColor } = useCategories();
@@ -113,6 +113,16 @@ export const YearPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
@@ -436,6 +446,7 @@ export const YearPage: React.FC = () => {
                     setEditingTask(null);
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
 
             {/* Task Detail Modal */}

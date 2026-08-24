@@ -16,6 +16,7 @@ export interface UseTasksReturn {
     loading: boolean;
     error: Error | null;
     createTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Task>;
+    createTasksBatch: (tasksData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>[]) => Promise<Task[]>;
     updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => Promise<Task | undefined>;
     deleteTask: (id: string) => Promise<boolean>;
     updateTaskStatus: (id: string, status: TaskStatus) => Promise<Task | undefined>;
@@ -85,7 +86,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
             // Optimistic update - only add if it matches filters
             if (matchesFilters(newTask)) {
                 setTasks(prev => [...prev, newTask].sort((a, b) =>
-                    a.startDate.localeCompare(b.startDate)
+                    (a.startDate || '').localeCompare(b.startDate || '')
                 ));
             }
 
@@ -96,6 +97,18 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
             throw err;
         }
     }, [matchesFilters, loadTasks]);
+
+    // Create tasks in batch
+    const createTasksBatch = useCallback(async (tasksData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+        try {
+            const newTasks = await taskRepository.createTasksBatch(tasksData);
+            await loadTasks();
+            return newTasks;
+        } catch (err) {
+            await loadTasks();
+            throw err;
+        }
+    }, [loadTasks]);
 
     // Update task with optimistic update
     const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
@@ -190,6 +203,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         loading,
         error,
         createTask,
+        createTasksBatch,
         updateTask,
         deleteTask,
         updateTaskStatus,

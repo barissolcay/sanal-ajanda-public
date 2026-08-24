@@ -1,5 +1,5 @@
 // WeekPage - Weekly calendar view
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { WeekCalendar } from '../components/calendar/WeekCalendar';
@@ -7,7 +7,7 @@ import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
-import { navigation, formatDate, getWeekRange, isTaskInRange } from '../domain/dateUtils';
+import { navigation, formatDate, getWeekRange, isTaskInRange, toDateString } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const WeekPage: React.FC = () => {
@@ -20,7 +20,7 @@ export const WeekPage: React.FC = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, createTasksBatch, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
 
@@ -46,7 +46,8 @@ export const WeekPage: React.FC = () => {
         return filtered;
     }, [tasks, weekRange, searchQuery]);
 
-    React.useEffect(() => {
+    // Keep showCompleted in sync with settings default
+    useEffect(() => {
         setShowCompleted(settings.showCompletedByDefault);
     }, [settings.showCompletedByDefault]);
 
@@ -56,7 +57,18 @@ export const WeekPage: React.FC = () => {
 
     const handleDayClick = (day: Date) => {
         // Navigate to today page with the selected date
-        navigate('/', { state: { selectedDate: day.toISOString() } });
+        navigate('/today', { state: { selectedDate: day.toISOString() } });
+    };
+
+    const handleTaskDrop = async (taskId: string, targetDate: Date) => {
+        const dateStr = toDateString(targetDate);
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            await updateTask(taskId, {
+                startDate: dateStr,
+                endDate: task.endDate && task.startDate !== task.endDate ? dateStr : undefined
+            });
+        }
     };
 
     const handleCreateTask = async (data: TaskFormData) => {
@@ -66,6 +78,16 @@ export const WeekPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
@@ -123,6 +145,7 @@ export const WeekPage: React.FC = () => {
                         weekStartsOn={settings.weekStartsOn}
                         onTaskClick={setSelectedTask}
                         onDayClick={handleDayClick}
+                        onTaskDrop={handleTaskDrop}
                         selectedTaskId={selectedTask?.id}
                     />
                 </div>
@@ -162,6 +185,7 @@ export const WeekPage: React.FC = () => {
                     setEditingTask(null);
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
         </div>
     );

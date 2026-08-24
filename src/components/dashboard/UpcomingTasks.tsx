@@ -5,50 +5,56 @@ import type { Task } from '../../domain/types';
 import { startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
 import { clsx } from 'clsx';
 import { useCategories } from '../../hooks/useCategories';
+import { isOverdue } from '../../domain/dateUtils';
 
 interface UpcomingTasksProps {
     tasks: Task[];
     onTaskClick?: (task: Task) => void;
 }
 
-// Get minutes until task deadline
-const getMinutesUntilDeadline = (task: Task): number => {
+// Get minutes until task starts (or deadline for all-day)
+const getMinutesUntilStart = (task: Task): number => {
+    if (!task.startDate) return 999999;
     const now = new Date();
-    const deadlineDate = new Date(task.endDate || task.startDate);
+    const startDate = new Date(task.startDate);
 
-    if (task.endTime) {
-        const [hours, minutes] = task.endTime.split(':').map(Number);
-        deadlineDate.setHours(hours, minutes, 0, 0);
-    } else if (task.startTime) {
+    if (task.startTime) {
         const [hours, minutes] = task.startTime.split(':').map(Number);
-        deadlineDate.setHours(hours, minutes, 0, 0);
+        startDate.setHours(hours, minutes, 0, 0);
     } else {
-        deadlineDate.setHours(23, 59, 59, 999);
+        startDate.setHours(23, 59, 59, 999);
     }
 
-    return differenceInMinutes(deadlineDate, now);
+    return differenceInMinutes(startDate, now);
 };
 
 // Format countdown
-const formatCountdown = (minutes: number): string => {
-    if (minutes < 60) return `${minutes} dk`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours < 24) {
-        if (mins === 0) return `${hours}s`;
-        return `${hours}s ${mins}dk`;
+const formatCountdown = (minutes: number, task: Task): string => {
+    if (minutes > 0) {
+        if (minutes < 60) return `${minutes} dk`;
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        if (hours < 24) {
+            if (mins === 0) return `${hours}s`;
+            return `${hours}s ${mins}dk`;
+        }
+        const days = Math.floor(hours / 24);
+        return `${days} gün`;
     }
-    const days = Math.floor(hours / 24);
-    return `${days} gün`;
+    // Started earlier today
+    if (task.startTime) return task.startTime.substring(0, 5);
+    return 'Bugün';
 };
 
-// Check if task deadline is today
-const isDeadlineToday = (task: Task): boolean => {
+// Check if task is today
+const isTaskToday = (task: Task): boolean => {
+    if (!task.startDate) return false;
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
-    const deadlineDate = new Date(task.endDate || task.startDate);
-    return deadlineDate >= todayStart && deadlineDate <= todayEnd;
+    const taskDate = new Date(task.startDate);
+    const endDate = task.endDate ? new Date(task.endDate) : taskDate;
+    return (taskDate >= todayStart && taskDate <= todayEnd) || (endDate >= todayStart && endDate <= todayEnd);
 };
 
 // Normal task item (non-overdue)
@@ -57,7 +63,7 @@ const TaskItem: React.FC<{
     getCategoryColor: (id: string) => string;
     onClick?: () => void;
 }> = ({ task, getCategoryColor, onClick }) => {
-    const minutes = getMinutesUntilDeadline(task);
+    const minutes = getMinutesUntilStart(task);
     const isUrgent = minutes <= 60 && minutes >= 0;
     const isHighPriority = task.priority === 2;
     // Get category color using the hook function
@@ -92,7 +98,7 @@ const TaskItem: React.FC<{
                     ? 'bg-amber-500/20 text-amber-400'
                     : 'bg-slate-800/50 text-slate-400'
             )}>
-                {formatCountdown(minutes)}
+                {formatCountdown(minutes, task)}
             </div>
 
             <div className="flex-1 min-w-0 z-10 flex items-center gap-2">
@@ -103,6 +109,11 @@ const TaskItem: React.FC<{
                 )}>
                     {task.title}
                 </p>
+                {task.startTime && (
+                    <span className="text-[11px] text-slate-400 shrink-0">
+                        {task.startTime.substring(0, 5)}
+                    </span>
+                )}
             </div>
         </button>
     );
@@ -170,19 +181,19 @@ export const UpcomingTasks: React.FC<UpcomingTasksProps> = ({
     // Filter and sort - priority first, then by time
     const upcomingTasks = tasks
         .filter(task => {
-            if (task.status === 'done') return false;
-            const minutes = getMinutesUntilDeadline(task);
-            const deadlineToday = isDeadlineToday(task);
-            const lessThan12Hours = minutes >= -60 && minutes <= 720;
-            return deadlineToday || lessThan12Hours;
+            if (task.status === 'done' || task.status === 'cancelled' || !task.startDate) return false;
+            const minutes = getMinutesUntilStart(task);
+            const todayTask = isTaskToday(task);
+            const isUpcomingWithin12h = minutes >= 0 && minutes <= 720;
+            return todayTask || isUpcomingWithin12h;
         })
         .sort((a, b) => {
             // Priority first (High ID:2 > Low ID:1 > Normal ID:0)
             if (a.priority !== b.priority) {
                 return (b.priority || 0) - (a.priority || 0);
             }
-            // Then by time
-            return getMinutesUntilDeadline(a) - getMinutesUntilDeadline(b);
+            // Then by start time
+            return getMinutesUntilStart(a) - getMinutesUntilStart(b);
         });
 
     const visibleTasks = upcomingTasks.slice(0, 3);
@@ -190,10 +201,9 @@ export const UpcomingTasks: React.FC<UpcomingTasksProps> = ({
 
     // Render task
     const renderTask = (task: Task, onClick?: () => void) => {
-        const minutes = getMinutesUntilDeadline(task);
-        const isOverdue = minutes < 0;
+        const isTaskOverdue = isOverdue(task);
 
-        if (isOverdue) {
+        if (isTaskOverdue) {
             return <OverdueTaskItem key={task.id} task={task} getCategoryColor={getCategoryColor} onClick={onClick} />;
         }
         return <TaskItem key={task.id} task={task} getCategoryColor={getCategoryColor} onClick={onClick} />;

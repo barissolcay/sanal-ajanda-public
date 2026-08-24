@@ -40,7 +40,7 @@ export const MonthPage: React.FC = () => {
         }
     }, [location.state]);
 
-    const { tasks, createTask, updateTask, deleteTask, updateTaskStatus } = useTasks({
+    const { tasks, createTask, createTasksBatch, updateTask, deleteTask, updateTaskStatus } = useTasks({
         showCompleted,
     });
     const { getCategoryColor } = useCategories();
@@ -81,7 +81,8 @@ export const MonthPage: React.FC = () => {
         return { all: dayTasks, sorted };
     }, [monthTasks, selectedDate]);
 
-    React.useEffect(() => {
+    // Keep showCompleted in sync with settings default
+    useEffect(() => {
         setShowCompleted(settings.showCompletedByDefault);
     }, [settings.showCompletedByDefault]);
 
@@ -98,13 +99,12 @@ export const MonthPage: React.FC = () => {
         } else {
             setSelectedDate(date);
         }
-        setSelectedTask(null);
     };
 
     const handleGoToDay = () => {
         // Navigate to Today page with selected date
         if (selectedDate) {
-            navigate('/', { state: { selectedDate: selectedDate.toISOString() } });
+            navigate('/today', { state: { selectedDate: selectedDate.toISOString() } });
         }
     };
 
@@ -115,6 +115,16 @@ export const MonthPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
@@ -451,7 +461,8 @@ export const MonthPage: React.FC = () => {
                     setEditingTask(null);
                 }}
                 onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
-        </div >
+        </div>
     );
 };

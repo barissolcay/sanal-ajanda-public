@@ -19,6 +19,7 @@ import {
     LucideIcon,
     LogOut,
     AlertCircle,
+    StickyNote,
 } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { useTasks } from '../../hooks/useTasks';
@@ -147,6 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     // Dynamic otherItems with overdue badge
     const otherItems: NavItem[] = [
         { to: '/lists', icon: <LayoutGrid className="w-5 h-5" />, label: 'Tüm Listeler' },
+        { to: '/notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notlar' },
         { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar', showBadge: overdueCount > 0 },
         { to: '/completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Tamamlananlar' },
         { to: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Ayarlar' },

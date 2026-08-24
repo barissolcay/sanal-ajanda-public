@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { AlertTriangle, Clock, Calendar, CheckCircle2, Zap } from 'lucide-react';
 
 interface DailySummaryCardProps {
     totalTasks: number;
@@ -7,6 +7,7 @@ interface DailySummaryCardProps {
     highPriorityCount: number;
     overdueCount: number;
     deadlineTodayCount: number;
+    todayOverdueCompleted?: number;
 }
 
 export const DailySummaryCard: React.FC<DailySummaryCardProps> = ({
@@ -14,77 +15,89 @@ export const DailySummaryCard: React.FC<DailySummaryCardProps> = ({
     completedTasks,
     highPriorityCount,
     overdueCount,
-    deadlineTodayCount
+    deadlineTodayCount,
+    todayOverdueCompleted = 0,
 }) => {
-    // Generate the report text
-    const getSummaryText = () => {
-        const parts: string[] = [];
+    const pending = Math.max(0, totalTasks - completedTasks);
 
-        // Overall status
+    // Punchy, single motivational status line
+    const getStatusMessage = () => {
         if (totalTasks === 0) {
-            return "Bugün için planlanmış herhangi bir göreviniz bulunmuyor. Dilerseniz yeni görevler ekleyerek güne başlayabilirsiniz.";
+            return "Bugün için henüz görev planlanmadı. Harika bir başlangıç yapabilirsin!";
         }
-
-        // Introduction
-        const pending = totalTasks - completedTasks;
-
-        if (completedTasks === totalTasks) {
-            return `Tebrikler! Bugünün tüm görevlerini (${totalTasks} görev) başarıyla tamamladınız. Harika bir iş çıkardınız.`;
+        if (completedTasks >= totalTasks && totalTasks > 0) {
+            return "Tebrikler! Bugünün tüm görevlerini tamamladın. Harika bir iş! 🎉";
         }
-
-        // Active task count logic
-        let intro = `Bugün toplam ${totalTasks} adet göreviniz var`;
-        if (completedTasks > 0) {
-            intro += ` ve şu ana kadar ${completedTasks} tanesini tamamladınız.`;
-        } else {
-            intro += ".";
+        if (pending > 0 && highPriorityCount > 0) {
+            return `Bugün tamamlanacak ${pending} görev var (${highPriorityCount} tanesi kritik öncelikli).`;
         }
-        parts.push(intro);
-
-        // Details
-        const details: string[] = [];
-
-        if (deadlineTodayCount > 0) {
-            details.push(`${deadlineTodayCount} tanesinin son günü bugün`);
-        }
-
-        if (highPriorityCount > 0) {
-            details.push(`${highPriorityCount} tanesi yüksek öncelikli`);
-        }
-
-        if (overdueCount > 0) {
-            details.push(`${overdueCount} görevin süresi geçmiş durumda`);
-        }
-
-        if (details.length > 0) {
-            const detailText = details.join(', ');
-            parts.push(`Bu görevlerden ${detailText}.`);
-        }
-
         if (pending > 0) {
-            parts.push(`Kalan ${pending} görevi tamamlamak için harika bir zaman.`);
+            return `Günü verimli kılmak için kalan ${pending} göreve odaklanma zamanı.`;
         }
-
-        return parts.join(' ');
+        return "Günlük planın hazır.";
     };
 
     return (
-        <div className="relative overflow-hidden rounded-[14px] bg-slate-900/50 border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
-            {/* Decoration background */}
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl" />
+        <div className="relative overflow-hidden rounded-2xl bg-slate-900/80 border border-slate-700/60 shadow-lg p-4 md:p-5 backdrop-blur-xl">
+            {/* Background ambient accent */}
+            <div className="absolute -top-10 -right-10 w-28 h-28 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="relative p-5 flex gap-4 items-start">
-                <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 shrink-0">
-                    <FileText className="w-5 h-5 text-indigo-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 shrink-0">
+                        <Zap className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            Günün Durumu
+                        </h3>
+                        <p className="text-sm font-medium text-slate-200 mt-0.5">
+                            {getStatusMessage()}
+                        </p>
+                    </div>
                 </div>
 
-                <div className="space-y-1 pt-0.5">
-                    <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide opacity-90">
-                        Günün Özeti
-                    </h3>
-                    <p className="text-[15px] leading-relaxed text-slate-300 font-medium opacity-90">
-                        {getSummaryText()}
-                    </p>
+                {/* Glanceable Mini Badges */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800 w-full sm:w-auto">
+                    {/* Today Remaining */}
+                    {pending > 0 && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300 font-medium">
+                            <Calendar className="w-3 h-3 text-indigo-400" />
+                            <span>{pending} Kalan</span>
+                        </div>
+                    )}
+
+                    {/* High Priority */}
+                    {highPriorityCount > 0 && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-xs text-red-300 font-semibold">
+                            <AlertTriangle className="w-3 h-3 text-red-400" />
+                            <span>{highPriorityCount} Kritik</span>
+                        </div>
+                    )}
+
+                    {/* Deadline Today */}
+                    {deadlineTodayCount > 0 && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-xs text-amber-300 font-medium">
+                            <Clock className="w-3 h-3 text-amber-400" />
+                            <span>{deadlineTodayCount} Son Gün</span>
+                        </div>
+                    )}
+
+                    {/* Overdue */}
+                    {overdueCount > 0 && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-xs text-cyan-300 font-medium">
+                            <Clock className="w-3 h-3 text-cyan-400" />
+                            <span>{overdueCount} Gecikmiş</span>
+                        </div>
+                    )}
+
+                    {/* Overdue Completed Today */}
+                    {todayOverdueCompleted > 0 && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-300 font-medium">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>+{todayOverdueCompleted} Telafi</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -44,6 +44,7 @@ export const DashboardPage: React.FC = () => {
 
         // Helper to check if task is in date range (same as TodayPage)
         const isInRange = (task: Task, rangeStart: Date, rangeEnd: Date): boolean => {
+            if (!task.startDate) return false;
             const taskStartDate = new Date(task.startDate);
             taskStartDate.setHours(0, 0, 0, 0);
             const taskEndDate = task.endDate ? new Date(task.endDate) : taskStartDate;
@@ -72,6 +73,17 @@ export const DashboardPage: React.FC = () => {
             return completedDate >= todayStart && completedDate <= todayEnd;
         }).length;
 
+        // Overdue completed today (tasks finished today whose scheduled date was in the past)
+        const todayOverdueCompleted = allTasks.filter(t => {
+            if (t.status !== 'done') return false;
+            const completedDate = new Date(t.updatedAt);
+            const isCompletedToday = completedDate >= todayStart && completedDate <= todayEnd;
+            if (!isCompletedToday) return false;
+            if (!t.startDate) return false;
+            const taskEndDate = startOfDay(new Date(t.endDate || t.startDate));
+            return taskEndDate < todayStart;
+        }).length;
+
         // Week pending
         const weekPending = pendingTasks.filter(t => isInRange(t, weekStart, weekEnd)).length;
 
@@ -83,6 +95,7 @@ export const DashboardPage: React.FC = () => {
 
         // Upcoming (within 12 hours or deadline today)
         const upcomingCount = pendingTasks.filter(t => {
+            if (!t.startDate) return false;
             const deadlineDate = new Date(t.endDate || t.startDate);
             if (t.endTime) {
                 const [hours, minutes] = t.endTime.split(':').map(Number);
@@ -142,6 +155,7 @@ export const DashboardPage: React.FC = () => {
         return {
             todayTotal,
             todayCompleted,
+            todayOverdueCompleted,
             todayPending: todayTotal,
             weekPending,
             monthPending,
@@ -172,6 +186,20 @@ export const DashboardPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
+        await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
+        setIsFormOpen(false);
+    };
+
+    const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
+        for (const data of tasksData) {
+            await createTask({
+                ...data,
+                endDate: data.endDate || undefined,
+                startTime: data.startTime || undefined,
+                endTime: data.endTime || undefined,
+            });
+        }
+        await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
         setIsFormOpen(false);
     };
 
@@ -237,6 +265,7 @@ export const DashboardPage: React.FC = () => {
                     <HeroCard
                         todayTotal={stats.todayPending + stats.todayCompleted}
                         todayCompleted={stats.todayCompleted}
+                        todayOverdueCompleted={stats.todayOverdueCompleted}
                         currentStreak={stats.currentStreak}
                     />
 
@@ -247,8 +276,8 @@ export const DashboardPage: React.FC = () => {
                         highPriorityCount={stats.priorityCount}
                         deadlineTodayCount={stats.deadlineTodayCount}
                         overdueCount={stats.overduePending}
+                        todayOverdueCompleted={stats.todayOverdueCompleted}
                     />
-
 
                     {/* Two Column Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -258,7 +287,7 @@ export const DashboardPage: React.FC = () => {
                             {/* KPI Grid */}
                             <KPIGrid
                                 today={stats.todayPending}
-                                todayDetail={stats.todayCompleted > 0 ? `${stats.todayCompleted} tamamlandı` : undefined}
+                                todayDetail={stats.todayCompleted > 0 ? `${stats.todayCompleted} tamamlandı${stats.todayOverdueCompleted > 0 ? ` (+${stats.todayOverdueCompleted} telafi)` : ''}` : undefined}
                                 week={stats.weekPending}
                                 month={stats.monthPending}
                                 overdue={stats.overduePending}
@@ -300,6 +329,7 @@ export const DashboardPage: React.FC = () => {
                 open={isFormOpen}
                 onClose={() => setIsFormOpen(false)}
                 onSubmit={handleCreateTask}
+                onSubmitBatch={handleCreateTasksBatch}
             />
 
             {selectedTask && (

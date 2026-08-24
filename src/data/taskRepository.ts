@@ -18,7 +18,7 @@ function mapToDomain(item: any): Task {
         status: item.status,
         priority: item.priority,
         color: item.color || undefined,
-        startDate: item.startDate || item.start_date,
+        startDate: item.start_date || undefined,
         endDate: item.end_date || undefined,
         startTime: item.start_time || undefined,
         endTime: item.end_time || undefined,
@@ -34,15 +34,15 @@ function mapToDb(task: Partial<Task>, userId: string) {
         ...(task.id ? { id: task.id } : {}),
         user_id: userId,
         title: task.title,
-        description: task.description,
-        category: task.category,
-        status: task.status,
-        priority: task.priority,
-        color: task.color,
-        start_date: task.startDate,
-        end_date: task.endDate,
-        start_time: task.startTime,
-        end_time: task.endTime,
+        description: task.description || null,
+        category: task.category || 'general',
+        status: task.status || 'pending',
+        priority: task.priority ?? 0,
+        color: task.color || null,
+        start_date: task.startDate || null,
+        end_date: task.endDate || null,
+        start_time: task.startTime || null,
+        end_time: task.endTime || null,
         updated_at: new Date().toISOString(),
     };
 }
@@ -67,6 +67,27 @@ export async function createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'upda
     }
 
     return mapToDomain(data);
+}
+
+/**
+ * Create multiple tasks in batch
+ */
+export async function createTasksBatch(tasksData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<Task[]> {
+    if (tasksData.length === 0) return [];
+    const userId = await getCurrentUserId();
+    const dbPayloads = tasksData.map(t => mapToDb(t, userId));
+
+    const { data, error } = await supabase
+        .from('tasks')
+        .insert(dbPayloads)
+        .select();
+
+    if (error) {
+        console.error('Error batch creating tasks:', error);
+        throw error;
+    }
+
+    return (data || []).map(mapToDomain);
 }
 
 /**
