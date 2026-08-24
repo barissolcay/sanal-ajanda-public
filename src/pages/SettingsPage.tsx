@@ -78,6 +78,11 @@ export const SettingsPage: React.FC = () => {
     const [editCategoryColor, setEditCategoryColor] = useState('');
     const [editCategoryIcon, setEditCategoryIcon] = useState<string>('List');
 
+    // Custom Undated Settings
+    const undatedName = settings.undatedViewName || 'Planlar / Süresiz';
+    const undatedColor = settings.undatedViewColor || '#06b6d4';
+    const undatedIcon = settings.undatedViewIcon || 'Layers';
+
     const handleShowCompletedChange = (checked: boolean) => {
         updateSettings({ showCompletedByDefault: checked });
     };
@@ -108,7 +113,24 @@ export const SettingsPage: React.FC = () => {
         setEditCategoryIcon(category.icon || 'List');
     };
 
+    const handleStartEditUndated = () => {
+        setEditingCategoryId('__undated__');
+        setEditCategoryName(undatedName);
+        setEditCategoryColor(undatedColor);
+        setEditCategoryIcon(undatedIcon);
+    };
+
     const handleSaveEdit = async () => {
+        if (editingCategoryId === '__undated__' && editCategoryName.trim()) {
+            await updateSettings({
+                undatedViewName: editCategoryName.trim(),
+                undatedViewColor: editCategoryColor,
+                undatedViewIcon: editCategoryIcon,
+            });
+            setEditingCategoryId(null);
+            return;
+        }
+
         if (editingCategoryId && editCategoryName.trim()) {
             await updateCategory(editingCategoryId, {
                 name: editCategoryName.trim(),
@@ -135,6 +157,8 @@ export const SettingsPage: React.FC = () => {
         if (!a.isDefault && b.isDefault) return 1;
         return a.order - b.order;
     });
+
+    const UndatedIconComp = getCategoryIcon(undatedIcon);
 
     return (
         <div className="flex flex-col h-full">
@@ -237,25 +261,101 @@ export const SettingsPage: React.FC = () => {
 
                         {/* Category list */}
                         <div className="space-y-2">
-                            {/* Dedicated Planlar / Süresiz System View Item */}
-                            <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl border border-cyan-500/30 shadow-sm">
-                                <div
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-sm"
-                                    style={{ backgroundColor: '#06b6d4' }}
-                                >
-                                    <Layers className="w-4 h-4" />
-                                </div>
+                            {/* Dedicated Planlar / Süresiz System View Item (Fully Customizable) */}
+                            <div className="p-3 bg-slate-800/50 rounded-xl border border-cyan-500/30 shadow-sm hover:border-cyan-500/50 transition-all">
+                                {editingCategoryId === '__undated__' ? (
+                                    // Edit mode for Undated View
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={editCategoryName}
+                                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                                className="flex-1 px-3 py-1.5 bg-slate-900/80 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-cyan-400"
+                                                placeholder="Görünüm adı"
+                                            />
+                                            <button
+                                                onClick={handleSaveEdit}
+                                                className="p-2 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition-colors"
+                                                title="Kaydet"
+                                            >
+                                                <Check className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={handleCancelEdit}
+                                                className="p-2 text-slate-400 hover:bg-slate-700/60 rounded-lg transition-colors"
+                                                title="İptal"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
 
-                                <div className="flex-1 flex items-center gap-2 min-w-0">
-                                    <span className="text-slate-200 font-semibold truncate">Planlar / Süresiz</span>
-                                    <span className="text-[10px] text-cyan-300 px-2 py-0.5 bg-cyan-500/15 border border-cyan-500/30 rounded-full font-medium">
-                                        Sistem Havuzu
-                                    </span>
-                                </div>
+                                        {/* Icon Selection in Edit */}
+                                        <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-900/60 rounded-lg border border-slate-700/50 max-h-24 overflow-y-auto">
+                                            {AVAILABLE_CATEGORY_ICONS.map((iconItem) => {
+                                                const IconComp = getCategoryIcon(iconItem.name);
+                                                const isSelected = editCategoryIcon === iconItem.name;
+                                                return (
+                                                    <button
+                                                        key={iconItem.name}
+                                                        type="button"
+                                                        onClick={() => setEditCategoryIcon(iconItem.name)}
+                                                        title={iconItem.label}
+                                                        className={`p-1.5 rounded flex items-center justify-center border transition-all ${
+                                                            isSelected
+                                                                ? 'bg-cyan-500/30 border-cyan-400 text-cyan-300'
+                                                                : 'border-transparent text-slate-400 hover:text-slate-200'
+                                                        }`}
+                                                    >
+                                                        <IconComp className="w-3.5 h-3.5" />
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
 
-                                <span className="text-xs text-slate-400 hidden sm:inline">
-                                    Tarihsiz planlar havuzu
-                                </span>
+                                        {/* Color Selection in Edit */}
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {COLOR_PALETTE.map((color) => (
+                                                <button
+                                                    key={color}
+                                                    type="button"
+                                                    onClick={() => setEditCategoryColor(color)}
+                                                    className={`w-6 h-6 rounded-md flex items-center justify-center border transition-all ${
+                                                        editCategoryColor === color ? 'border-white scale-110 shadow-sm' : 'border-transparent'
+                                                    }`}
+                                                    style={{ backgroundColor: color }}
+                                                >
+                                                    {editCategoryColor === color && <Check className="w-3.5 h-3.5 text-white" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // View mode for Undated View
+                                    <div className="flex items-center gap-3">
+                                        <div
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-sm transition-transform"
+                                            style={{ backgroundColor: undatedColor }}
+                                        >
+                                            <UndatedIconComp className="w-4 h-4" />
+                                        </div>
+
+                                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                                            <span className="text-slate-200 font-semibold truncate">{undatedName}</span>
+                                            <span className="text-[10px] text-cyan-300 px-2 py-0.5 bg-cyan-500/15 border border-cyan-500/30 rounded-full font-medium">
+                                                Sistem Havuzu
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            onClick={handleStartEditUndated}
+                                            className="p-1.5 text-slate-400 hover:text-cyan-300 hover:bg-slate-700/60 rounded-lg transition-colors"
+                                            title="Görünümü Düzenle"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {sortedCategories.map((category, index) => {
@@ -329,7 +429,7 @@ export const SettingsPage: React.FC = () => {
                                                             }`}
                                                             style={{ backgroundColor: color }}
                                                         >
-                                                            {editCategoryColor === color && <Check className="w-3 h-3 text-white" />}
+                                                            {editCategoryColor === color && <Check className="w-3.5 h-3.5 text-white" />}
                                                         </button>
                                                     ))}
                                                 </div>
@@ -402,7 +502,7 @@ export const SettingsPage: React.FC = () => {
                         </div>
 
                         <p className="text-xs text-slate-500 mt-4">
-                            💡 <strong>İpucu:</strong> Ok butonlarını (⬆️/⬇️) kullanarak listelerinizin yan bardaki sırasını anında değiştirebilir, simgelerini ve renklerini dilediğiniz gibi düzenleyebilirsiniz.
+                            💡 <strong>İpucu:</strong> Ok butonlarını (⬆️/⬇️) kullanarak listelerinizin yan bardaki sırasını anında değiştirebilir, kalem (✏️) butonuyla simgelerini ve renklerini dilediğiniz gibi düzenleyebilirsiniz.
                         </p>
                     </div>
 

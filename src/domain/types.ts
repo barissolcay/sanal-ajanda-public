@@ -47,7 +47,21 @@ export interface Settings {
     id: number;                    // always 1
     showCompletedByDefault: boolean;
     weekStartsOn: 0 | 1;           // 0=Sunday, 1=Monday (date-fns compatible)
+    undatedViewName?: string;
+    undatedViewColor?: string;
+    undatedViewIcon?: string;
+    undatedViewVisible?: boolean;
 }
+
+export const DEFAULT_SETTINGS: Settings = {
+    id: 1,
+    showCompletedByDefault: false,
+    weekStartsOn: 1,
+    undatedViewName: 'Planlar / Süresiz',
+    undatedViewColor: '#06b6d4',
+    undatedViewIcon: 'Layers',
+    undatedViewVisible: true,
+};
 
 // Default categories with colors
 export const DEFAULT_CATEGORIES: Category[] = [
@@ -91,13 +105,6 @@ export const PRIORITY_INFO: Record<TaskPriority, { label: string; color: string;
     0: { label: 'Normal', color: 'text-slate-400', icon: '●' },
     1: { label: 'Düşük', color: 'text-blue-400', icon: '▽' },
     2: { label: 'Yüksek', color: 'text-red-400', icon: '▲' },
-};
-
-// Default settings
-export const DEFAULT_SETTINGS: Settings = {
-    id: 1,
-    showCompletedByDefault: false,
-    weekStartsOn: 1, // Monday
 };
 
 // Predefined color palette for custom colors

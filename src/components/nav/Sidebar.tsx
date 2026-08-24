@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useCategories } from '../../hooks/useCategories';
 import { useTasks } from '../../hooks/useTasks';
+import { useSettings } from '../../hooks/useSettings';
 import { supabase } from '../../lib/supabaseClient';
 import type { Category } from '../../domain/types';
 import { useSidebar } from '../../context/SidebarContext';
@@ -138,6 +139,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     const { categories, loading } = useCategories();
     const { tasks } = useTasks({ showCompleted: false });
+    const { settings } = useSettings();
     const { isOpen, close } = useSidebar();
     const location = useLocation();
 
@@ -160,6 +162,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         close();
     }, [location.pathname]);
 
+    // Custom Undated Settings
+    const undatedName = settings.undatedViewName || 'Planlar / Süresiz';
+    const undatedColor = settings.undatedViewColor || '#06b6d4';
+    const undatedIcon = settings.undatedViewIcon || 'Layers';
+    const isUndatedVisible = settings.undatedViewVisible !== false;
+
     // Sorted categories (defaults first, then custom sorted by order)
     const sortedCategories = [...categories].sort((a, b) => {
         if (a.isDefault && !b.isDefault) return -1;
@@ -168,14 +176,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     });
 
     const listItems: NavItem[] = [
-        // Dedicated Planlar / Süresiz entry
-        {
+        // Dedicated Planlar / Süresiz entry (if visible)
+        ...(isUndatedVisible ? [{
             to: '/lists/undated',
-            icon: <Layers className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />,
-            label: 'Planlar / Süresiz',
-            color: '#06b6d4',
+            icon: getIconComponent(undatedIcon),
+            label: undatedName,
+            color: undatedColor,
             badgeCount: undatedCount > 0 ? undatedCount : undefined,
-        },
+        }] : []),
         // Category entries
         ...sortedCategories.map((cat: Category) => ({
             to: `/lists/${cat.id}`,

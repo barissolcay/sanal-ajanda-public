@@ -128,9 +128,12 @@ export const ListsPage: React.FC = () => {
         return a.order - b.order;
     });
 
+    const undatedTabName = settings.undatedViewName || 'Planlar / Süresiz';
+    const undatedTabColor = settings.undatedViewColor || '#06b6d4';
+
     const tabs = [
         { id: 'all', label: 'Tümü', color: '#64748b' },
-        { id: 'undated', label: 'Planlar / Süresiz', color: '#06b6d4' },
+        { id: 'undated', label: undatedTabName, color: undatedTabColor },
         ...sortedCategories.map(cat => ({
             id: cat.id,
             label: cat.name.replace(' Listesi', ''),
@@ -143,7 +146,7 @@ export const ListsPage: React.FC = () => {
     const pageTitle = activeTab === 'all'
         ? 'Tüm Listeler'
         : activeTab === 'undated'
-            ? 'Planlar / Süresiz Görevler'
+            ? undatedTabName
             : (currentCategory?.name || 'Liste');
 
     return (
