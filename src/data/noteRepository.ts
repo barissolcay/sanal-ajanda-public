@@ -101,7 +101,7 @@ export async function updateNote(id: string, updates: Partial<Omit<Note, 'id' | 
 
     if (error) {
         console.error('Error updating note:', error);
-        return undefined;
+        throw error;
     }
 
     return mapToDomain(data);
@@ -111,10 +111,12 @@ export async function updateNote(id: string, updates: Partial<Omit<Note, 'id' | 
  * Delete a note
  */
 export async function deleteNote(id: string): Promise<boolean> {
+    const userId = await getCurrentUserId();
     const { error } = await supabase
         .from('notes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', userId);
 
     if (error) {
         console.error('Error deleting note:', error);
@@ -124,13 +126,19 @@ export async function deleteNote(id: string): Promise<boolean> {
 }
 
 /**
- * Search notes by query
+ * Search notes by query with safe sanitization
  */
 export async function searchNotes(query: string): Promise<Note[]> {
+    // Sanitize query to prevent PostgREST .or() injection with commas/parentheses
+    const sanitized = query.replace(/[,()"\\]/g, '').trim();
+    if (!sanitized) {
+        return getAllNotes();
+    }
+
     const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
+        .or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`)
         .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
 

@@ -120,7 +120,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                     ...getDefaultFormData(),
                     ...initialData,
                 });
-                setDateMode(initialData.startDate ? 'single' : 'single');
+                setDateMode(initialData.startDate ? 'single' : 'undated');
             } else {
                 setFormData(getDefaultFormData());
                 setDateMode('single');
@@ -133,6 +133,17 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             setIsSubmitting(false);
         }
     }, [isModalOpen, task, initialData]);
+
+    useEffect(() => {
+        if (!isModalOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isModalOpen, onClose]);
 
     const validate = (): boolean => {
         const newErrors: Partial<Record<keyof TaskFormData | 'rangeEndDate' | 'bulkText', string>> = {};
@@ -284,7 +295,12 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             <div className="modal-overlay" onClick={onClose} />
 
             {/* Modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="task-form-modal-title"
+            >
                 <div
                     className="w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto animate-scaleIn"
                     onClick={(e) => e.stopPropagation()}
@@ -298,7 +314,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-800/60">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-base md:text-lg font-semibold text-slate-100">
+                            <h2 id="task-form-modal-title" className="text-base md:text-lg font-semibold text-slate-100">
                                 {isEditing ? 'Görevi Düzenle' : 'Yeni Görev Oluştur'}
                             </h2>
                         </div>

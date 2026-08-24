@@ -90,12 +90,20 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                             const hasOverdue = dayTasks.some(t => isOverdue(t));
 
                             return (
-                                <button
+                                <div
                                     key={day.toISOString()}
+                                    role="gridcell"
+                                    tabIndex={0}
                                     onClick={() => onDayClick?.(day)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            onDayClick?.(day);
+                                        }
+                                    }}
                                     className={clsx(
-                                        'group flex flex-col p-1.5 border-b border-r border-slate-800/40 transition-all min-h-[100px]',
-                                        'hover:bg-slate-800/40 hover:shadow-inner',
+                                        'group flex flex-col p-1.5 border-b border-r border-slate-800/40 transition-all min-h-[100px] cursor-pointer outline-none',
+                                        'hover:bg-slate-800/40 hover:shadow-inner focus-visible:ring-1 focus-visible:ring-indigo-500',
                                         !isCurrentMonth && 'opacity-40',
                                         isSelected && 'bg-indigo-500/20 ring-1 ring-inset ring-indigo-500/50',
                                         isToday(day) && !isSelected && 'bg-cyan-500/10'
@@ -194,7 +202,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                             );
                                         })}
                                     </div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>

@@ -14,6 +14,15 @@ export interface UseNotesReturn {
     refreshNotes: () => Promise<void>;
 }
 
+function sortNotes(notesList: Note[]): Note[] {
+    return [...notesList].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) {
+            return a.isPinned ? -1 : 1;
+        }
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+}
+
 export function useNotes(): UseNotesReturn {
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,7 +33,7 @@ export function useNotes(): UseNotesReturn {
             setLoading(true);
             setError(null);
             const data = await noteRepository.getAllNotes();
-            setNotes(data);
+            setNotes(sortNotes(data));
         } catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to load notes'));
         } finally {
@@ -39,7 +48,7 @@ export function useNotes(): UseNotesReturn {
     const createNote = useCallback(async (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
         try {
             const newNote = await noteRepository.createNote(noteData);
-            setNotes(prev => [newNote, ...prev]);
+            setNotes(prev => sortNotes([newNote, ...prev]));
             return newNote;
         } catch (err) {
             await loadNotes();
@@ -50,11 +59,11 @@ export function useNotes(): UseNotesReturn {
     const updateNote = useCallback(async (id: string, updates: Partial<Omit<Note, 'id' | 'createdAt'>>) => {
         try {
             // Optimistic update
-            setNotes(prev => prev.map(note => note.id === id ? { ...note, ...updates, updatedAt: new Date().toISOString() } : note));
+            setNotes(prev => sortNotes(prev.map(note => note.id === id ? { ...note, ...updates, updatedAt: new Date().toISOString() } : note)));
 
             const updated = await noteRepository.updateNote(id, updates);
             if (updated) {
-                setNotes(prev => prev.map(note => note.id === id ? updated : note));
+                setNotes(prev => sortNotes(prev.map(note => note.id === id ? updated : note)));
             }
             return updated;
         } catch (err) {

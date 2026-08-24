@@ -106,12 +106,12 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
     if (updates.category !== undefined) dbUpdates.category = updates.category;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
-    // Preserve an explicit request to clear the optional color.
+    // Preserve an explicit request to clear optional fields.
     if ('color' in updates) dbUpdates.color = updates.color || null;
-    if (updates.startDate !== undefined) dbUpdates.start_date = updates.startDate;
-    if (updates.endDate !== undefined) dbUpdates.end_date = updates.endDate;
-    if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
-    if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+    if ('startDate' in updates) dbUpdates.start_date = updates.startDate || null;
+    if ('endDate' in updates) dbUpdates.end_date = updates.endDate || null;
+    if ('startTime' in updates) dbUpdates.start_time = updates.startTime || null;
+    if ('endTime' in updates) dbUpdates.end_time = updates.endTime || null;
 
     const { data, error } = await supabase
         .from('tasks')
@@ -123,7 +123,7 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
 
     if (error) {
         console.error('Error updating task:', error);
-        return undefined;
+        throw error;
     }
 
     return mapToDomain(data);

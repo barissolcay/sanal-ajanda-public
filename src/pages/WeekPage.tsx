@@ -7,7 +7,7 @@ import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import { useSettings } from '../hooks/useSettings';
-import { navigation, formatDate, getWeekRange, isTaskInRange, toDateString } from '../domain/dateUtils';
+import { navigation, formatDate, getWeekRange, isTaskInRange, toDateString, differenceInDays, parseISO, addDays } from '../domain/dateUtils';
 import type { Task } from '../domain/types';
 
 export const WeekPage: React.FC = () => {
@@ -63,10 +63,15 @@ export const WeekPage: React.FC = () => {
     const handleTaskDrop = async (taskId: string, targetDate: Date) => {
         const dateStr = toDateString(targetDate);
         const task = tasks.find(t => t.id === taskId);
-        if (task) {
+        if (task && task.startDate) {
+            let newEndDate: string | undefined = undefined;
+            if (task.endDate && task.startDate !== task.endDate) {
+                const durationDays = differenceInDays(parseISO(task.endDate), parseISO(task.startDate));
+                newEndDate = toDateString(addDays(targetDate, durationDays));
+            }
             await updateTask(taskId, {
                 startDate: dateStr,
-                endDate: task.endDate && task.startDate !== task.endDate ? dateStr : undefined
+                endDate: newEndDate
             });
         }
     };

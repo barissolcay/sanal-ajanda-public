@@ -38,8 +38,16 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     const weekDays = getWeekDays(date, weekStartsOn);
     const [dragOverDay, setDragOverDay] = React.useState<string | null>(null);
 
+    const tasksByDay = React.useMemo(() => {
+        const map = new Map<string, Task[]>();
+        weekDays.forEach(day => {
+            map.set(day.toISOString(), tasks.filter(task => isTaskOnDate(task, day)));
+        });
+        return map;
+    }, [tasks, weekDays]);
+
     const getTasksForDay = (day: Date) => {
-        return tasks.filter(task => isTaskOnDate(task, day));
+        return tasksByDay.get(day.toISOString()) || [];
     };
 
     // Get task style based on category color
@@ -160,7 +168,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             {/* Front */}
                                                             <div
                                                                 className={clsx(
-                                                                    'overdue-flip-front w-full px-2 py-1.5 rounded text-xs font-medium text-left border border-l-4 border-l-cyan-400 bg-slate-900/80',
+                                                                    'overdue-flip-front w-full px-2 py-1.5 rounded text-left border border-l-4 border-l-cyan-400 bg-slate-900/80',
                                                                     isHighPriority && 'animate-pulse ring-1 ring-red-500/50'
                                                                 )}
                                                                 style={{
@@ -173,7 +181,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             >
                                                                 <div className="flex items-start gap-1 min-w-0">
                                                                     <Clock className="w-3 h-3 text-cyan-400 shrink-0 overdue-icon-sad mt-0.5" />
-                                                                    <span className="break-words line-clamp-2 leading-tight flex-1 min-w-0">{task.title}</span>
+                                                                    <span className="text-xs font-medium text-slate-200 break-words line-clamp-2 leading-tight flex-1 min-w-0">{task.title}</span>
                                                                 </div>
                                                             </div>
 
@@ -187,14 +195,22 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                             }
 
                                             return (
-                                                <button
+                                                <div
                                                     key={task.id}
+                                                    role="button"
+                                                    tabIndex={0}
                                                     draggable
                                                     onDragStart={(e) => handleDragStart(e, task.id)}
                                                     onClick={() => onTaskClick?.(task)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            onTaskClick?.(task);
+                                                        }
+                                                    }}
                                                     className={clsx(
-                                                        'w-full px-2 py-1.5 rounded text-xs font-medium text-left border transition-all cursor-grab active:cursor-grabbing',
-                                                        'hover:scale-[1.02] hover:shadow-md',
+                                                        'w-full px-2 py-1.5 rounded text-xs font-medium text-left border transition-all cursor-grab active:cursor-grabbing outline-none',
+                                                        'hover:scale-[1.02] hover:shadow-md focus-visible:ring-1 focus-visible:ring-indigo-500',
                                                         selectedTaskId === task.id && 'ring-1 ring-indigo-500',
                                                         task.status === 'done' && 'opacity-50 line-through',
                                                         isHighPriority && 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
@@ -209,7 +225,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                             {task.title}
                                                         </span>
                                                     </div>
-                                                </button>
+                                                </div>
                                             );
                                         })}
 
@@ -272,14 +288,22 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                             }
 
                                             return (
-                                                <button
+                                                <div
                                                     key={task.id}
+                                                    role="button"
+                                                    tabIndex={0}
                                                     draggable
                                                     onDragStart={(e) => handleDragStart(e, task.id)}
                                                     onClick={() => onTaskClick?.(task)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            onTaskClick?.(task);
+                                                        }
+                                                    }}
                                                     className={clsx(
-                                                        'w-full px-2 py-1.5 rounded text-left border transition-all cursor-grab active:cursor-grabbing',
-                                                        'hover:scale-[1.02] hover:shadow-md',
+                                                        'w-full px-2 py-1.5 rounded text-left border transition-all cursor-grab active:cursor-grabbing outline-none',
+                                                        'hover:scale-[1.02] hover:shadow-md focus-visible:ring-1 focus-visible:ring-indigo-500',
                                                         selectedTaskId === task.id && 'ring-1 ring-indigo-500',
                                                         task.status === 'done' && 'opacity-50',
                                                         isHighPriority && 'animate-pulse ring-1 ring-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
@@ -293,12 +317,12 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                                         )}
                                                         <p className={clsx(
                                                             'text-xs font-medium text-slate-200 break-words line-clamp-2 leading-tight flex-1 min-w-0',
-                                                            task.status === 'done' && 'line-through'
+                                                            task.status === 'done' && 'line-through text-slate-500'
                                                         )}>
                                                             {task.title}
                                                         </p>
                                                     </div>
-                                                </button>
+                                                </div>
                                             );
                                         })}
                                     </div>

@@ -46,7 +46,7 @@ export const ListsPage: React.FC = () => {
         }
 
         // Sort by date (safe for undefined)
-        return filtered.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+        return [...filtered].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
     }, [tasks, activeTab, searchQuery]);
 
     // Update activeTab when route changes
@@ -222,6 +222,7 @@ export const ListsPage: React.FC = () => {
             <TaskFormModal
                 open={isFormOpen || !!editingTask}
                 task={editingTask}
+                initialData={activeTab === 'undated' ? { startDate: '' } : undefined}
                 onClose={() => {
                     setIsFormOpen(false);
                     setEditingTask(null);

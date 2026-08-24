@@ -12,6 +12,11 @@ import {
     isTaskOnDate,
     hasTime,
     isMultiDay,
+    formatDate,
+    formatTime,
+    formatDateRange,
+    formatTimeRange,
+    sortTasksByPriority,
 } from './dateUtils';
 import type { Task } from './types';
 
@@ -445,5 +450,58 @@ describe('isTaskOnDate', () => {
         });
 
         expect(isTaskOnDate(task, new Date('2025-12-06'))).toBe(false);
+    });
+});
+
+describe('formatDate', () => {
+    it('should format valid ISO string and Date objects in Turkish', () => {
+        expect(formatDate('2025-12-06', 'dd MMMM yyyy')).toContain('Aralık 2025');
+        expect(formatDate(new Date('2025-12-06T10:00:00'), 'yyyy-MM-dd')).toBe('2025-12-06');
+    });
+
+    it('should return empty string for invalid or empty dates without crashing', () => {
+        expect(formatDate('')).toBe('');
+        expect(formatDate(null)).toBe('');
+        expect(formatDate(undefined)).toBe('');
+        expect(formatDate('invalid-date-string')).toBe('');
+    });
+});
+
+describe('formatDateRange and formatTimeRange', () => {
+    it('should format single date and multi-day range', () => {
+        expect(formatDateRange('2025-12-06', '2025-12-06')).toContain('6 Ara 2025');
+        expect(formatDateRange('2025-12-06', '2025-12-08')).toContain('6 Ara – 8 Ara 2025');
+        expect(formatDateRange(undefined)).toBe('Süresiz Plan');
+    });
+
+    it('should format time ranges cleanly', () => {
+        expect(formatTime('09:30:00')).toBe('09:30');
+        expect(formatTimeRange('09:00', '10:30')).toBe('09:00 – 10:30');
+        expect(formatTimeRange('09:00')).toBe('09:00');
+        expect(formatTimeRange()).toBe('');
+    });
+});
+
+describe('sortTasksByPriority', () => {
+    it('should prioritize high priority tasks (priority: 2) in all-day bucket', () => {
+        const t1 = createTask({ id: '1', title: 'Normal task', priority: 0 });
+        const t2 = createTask({ id: '2', title: 'High priority task', priority: 2 });
+        const t3 = createTask({ id: '3', title: 'Low priority task', priority: 1 });
+
+        const result = sortTasksByPriority([t1, t2, t3]);
+        expect(result.activeNoTime[0].id).toBe('2');
+        expect(result.activeNoTime[1].id).toBe('1');
+        expect(result.activeNoTime[2].id).toBe('3');
+    });
+
+    it('should sort timed tasks by startTime then priority', () => {
+        const t1 = createTask({ id: '1', title: 'Later task', startTime: '14:00', priority: 2 });
+        const t2 = createTask({ id: '2', title: 'Earlier normal task', startTime: '09:00', priority: 0 });
+        const t3 = createTask({ id: '3', title: 'Earlier high priority task', startTime: '09:00', priority: 2 });
+
+        const result = sortTasksByPriority([t1, t2, t3]);
+        expect(result.activeWithTime[0].id).toBe('3'); // 09:00 High
+        expect(result.activeWithTime[1].id).toBe('2'); // 09:00 Normal
+        expect(result.activeWithTime[2].id).toBe('1'); // 14:00 High
     });
 });

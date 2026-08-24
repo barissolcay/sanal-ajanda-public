@@ -27,6 +27,8 @@ import {
     isSameDay,
     isSameMonth,
     isSameYear,
+    differenceInDays,
+    differenceInMinutes,
 } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import type { Task } from './types';
@@ -59,15 +61,23 @@ export {
     isSameDay,
     isSameMonth,
     isSameYear,
+    differenceInDays,
+    differenceInMinutes,
 };
 
 // ============================================
 // DATE FORMATTING
 // ============================================
 
-export function formatDate(date: Date | string, formatStr: string = 'dd MMMM yyyy'): string {
-    const d = typeof date === 'string' ? parseISO(date) : date;
-    return format(d, formatStr, { locale: tr });
+export function formatDate(date?: Date | string | null, formatStr: string = 'dd MMMM yyyy'): string {
+    if (!date) return '';
+    try {
+        const d = typeof date === 'string' ? parseISO(date) : date;
+        if (isNaN(d.getTime())) return '';
+        return format(d, formatStr, { locale: tr });
+    } catch {
+        return '';
+    }
 }
 
 export function formatTime(time: string): string {
@@ -100,23 +110,147 @@ export function formatTimeRange(startTime?: string, endTime?: string): string {
  * startDate + (startTime || '00:00')
  */
 export function getTaskStart(task: Task): Date {
-    const dateStr = task.startDate || '1970-01-01';
-    let timeStr = task.startTime || '00:00';
-    if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
-
-    return parse(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', new Date());
+    if (!task.startDate) return new Date(0);
+    const date = parseISO(task.startDate);
+    if (task.startTime) {
+        const [hours, minutes] = task.startTime.split(':').map(Number);
+        date.setHours(hours, minutes, 0, 0);
+    } else {
+        date.setHours(0, 0, 0, 0);
+    }
+    return date;
 }
 
 /**
  * Get the logical end datetime of a task
- * (endDate || startDate) + (endTime || '23:59')
+ * endDate + (endTime || '23:59')
  */
 export function getTaskEnd(task: Task): Date {
-    const dateStr = task.endDate || task.startDate || '1970-01-01';
-    let timeStr = task.endTime || '23:59';
-    if (timeStr.length > 5) timeStr = timeStr.substring(0, 5);
+    if (!task.startDate) return new Date(0);
+    const endDateStr = task.endDate || task.startDate;
+    const date = parseISO(endDateStr);
+    if (task.endTime) {
+        const [hours, minutes] = task.endTime.split(':').map(Number);
+        date.setHours(hours, minutes, 59, 999);
+    } else {
+        date.setHours(23, 59, 59, 999);
+    }
+    return date;
+}
 
-    return parse(`${dateStr} ${timeStr}`, 'yyyy-MM-dd HH:mm', new Date());
+/**
+ * Check if a task has specific start/end times
+ */
+export function hasTime(task: Task): boolean {
+    return Boolean(task.startTime || task.endTime);
+}
+
+/**
+ * Check if a task spans multiple days
+ */
+export function isMultiDay(task: Task): boolean {
+    if (!task.startDate || !task.endDate) return false;
+    return task.startDate !== task.endDate;
+}
+
+// ============================================
+// TASK FILTERING & SORTING
+// ============================================
+
+/**
+ * Check if a task falls within a given date range
+ */
+export function isTaskInRange(task: Task, start: Date, end: Date): boolean {
+    if (!task.startDate) return false;
+    const taskStart = getTaskStart(task);
+    const taskEnd = getTaskEnd(task);
+
+    return (
+        (taskStart >= start && taskStart <= end) ||
+        (taskEnd >= start && taskEnd <= end) ||
+        (taskStart <= start && taskEnd >= end)
+    );
+}
+
+/**
+ * Check if a task is overdue
+ * Day-end rule: Tasks are NOT overdue until their deadline date has completely ended.
+ */
+export function isOverdue(task: Task): boolean {
+    if (task.status === 'done' || task.status === 'cancelled') {
+        return false;
+    }
+    if (!task.startDate) {
+        return false;
+    }
+
+    const todayStart = startOfDay(new Date());
+    const taskEndDate = startOfDay(parseISO(task.endDate || task.startDate));
+
+    return isBefore(taskEndDate, todayStart);
+}
+
+/**
+ * Check if a task is scheduled for a specific date
+ */
+export function isTaskOnDate(task: Task, date: Date): boolean {
+    if (!task.startDate) return false;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const startStr = task.startDate;
+    const endStr = task.endDate || task.startDate;
+
+    return dateStr >= startStr && dateStr <= endStr;
+}
+
+const getPriorityWeight = (p: Task['priority']): number => {
+    if (p === 2) return 2; // Yüksek
+    if (p === 0) return 1; // Normal
+    return 0;              // Düşük (1)
+};
+
+/**
+ * Sort tasks by status, time, and priority:
+ * 1. Active tasks without time (all-day) sorted by priority then title
+ * 2. Active tasks with time sorted by startTime then priority
+ * 3. Completed/cancelled tasks last
+ */
+export function sortTasksByPriority(tasks: Task[]): {
+    activeNoTime: Task[];
+    activeWithTime: Task[];
+    completed: Task[];
+} {
+    const activeNoTime: Task[] = [];
+    const activeWithTime: Task[] = [];
+    const completed: Task[] = [];
+
+    for (const task of tasks) {
+        if (task.status === 'done' || task.status === 'cancelled') {
+            completed.push(task);
+        } else if (hasTime(task)) {
+            activeWithTime.push(task);
+        } else {
+            activeNoTime.push(task);
+        }
+    }
+
+    // Sort all-day tasks: High priority first, then title
+    activeNoTime.sort((a, b) => {
+        const pDiff = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+        if (pDiff !== 0) return pDiff;
+        return a.title.localeCompare(b.title);
+    });
+
+    // Sort timed tasks: startTime first, then high priority
+    activeWithTime.sort((a, b) => {
+        const timeDiff = (a.startTime || '').localeCompare(b.startTime || '');
+        if (timeDiff !== 0) return timeDiff;
+        return getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+    });
+
+    // Completed: by time
+    completed.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+    return { activeNoTime, activeWithTime, completed };
 }
 
 // ============================================
@@ -162,108 +296,6 @@ export function getDayRange(date: Date): DateRange {
         start: startOfDay(date),
         end: endOfDay(date),
     };
-}
-
-// ============================================
-// TASK FILTERING
-// ============================================
-
-/**
- * Check if a task overlaps with the given date range
- * Task is in range if: taskEnd >= rangeStart AND taskStart <= rangeEnd
- */
-export function isTaskInRange(task: Task, rangeStart: Date, rangeEnd: Date): boolean {
-    if (!task.startDate) return false;
-    const taskStart = getTaskStart(task);
-    const taskEnd = getTaskEnd(task);
-
-    // Task overlaps with range if:
-    // taskEnd >= rangeStart AND taskStart <= rangeEnd
-    return !isBefore(taskEnd, rangeStart) && !isAfter(taskStart, rangeEnd);
-}
-
-/**
- * Check if a task is overdue
- * Overdue rule:
- * 1. Task must not be done or cancelled.
- * 2. Task must have a scheduled date (undated tasks are not overdue).
- * 3. The task's entire scheduled date must be in the past (yesterday or earlier).
- *    A task scheduled for today is NEVER overdue during today, regardless of startTime/endTime.
- */
-export function isOverdue(task: Task): boolean {
-    if (task.status === 'done' || task.status === 'cancelled') {
-        return false;
-    }
-    if (!task.startDate) {
-        return false;
-    }
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const taskEnd = getTaskEnd(task);
-    const taskEndDate = startOfDay(taskEnd);
-
-    // Overdue if scheduled end date is before today
-    return isBefore(taskEndDate, todayStart);
-}
-
-/**
- * Check if a task occurs on a specific date
- */
-export function isTaskOnDate(task: Task, date: Date): boolean {
-    if (!task.startDate) return false;
-    const dayStart = startOfDay(date);
-    const dayEnd = endOfDay(date);
-    return isTaskInRange(task, dayStart, dayEnd);
-}
-
-/**
- * Check if task has a specific time set (not all-day)
- */
-export function hasTime(task: Task): boolean {
-    return !!task.startTime || !!task.endTime;
-}
-
-/**
- * Check if task spans multiple days
- */
-export function isMultiDay(task: Task): boolean {
-    if (!task.endDate) return false;
-    return task.startDate !== task.endDate;
-}
-
-/**
- * Sort tasks by status and time:
- * 1. Active tasks without time (all-day) first
- * 2. Active tasks with time second
- * 3. Completed/cancelled tasks last
- * Within each group, sort by startTime
- */
-export function sortTasksByPriority(tasks: Task[]): {
-    activeNoTime: Task[];
-    activeWithTime: Task[];
-    completed: Task[];
-} {
-    const activeNoTime: Task[] = [];
-    const activeWithTime: Task[] = [];
-    const completed: Task[] = [];
-
-    for (const task of tasks) {
-        if (task.status === 'done' || task.status === 'cancelled') {
-            completed.push(task);
-        } else if (hasTime(task)) {
-            activeWithTime.push(task);
-        } else {
-            activeNoTime.push(task);
-        }
-    }
-
-    // Sort each group by time
-    const sortByTime = (a: Task, b: Task) => (a.startTime || '').localeCompare(b.startTime || '');
-    activeNoTime.sort(sortByTime);
-    activeWithTime.sort(sortByTime);
-    completed.sort(sortByTime);
-
-    return { activeNoTime, activeWithTime, completed };
 }
 
 // ============================================

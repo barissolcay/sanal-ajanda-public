@@ -40,6 +40,7 @@ create table if not exists public.notes (
   updated_at timestamptz not null default now()
 );
 
+-- Indexes
 create index if not exists tasks_user_id_start_date_idx
   on public.tasks (user_id, start_date);
 
@@ -55,6 +56,29 @@ create index if not exists categories_user_id_order_idx
 create index if not exists notes_user_id_pinned_idx
   on public.notes (user_id, is_pinned desc, updated_at desc);
 
+create index if not exists notes_tags_gin_idx
+  on public.notes using gin (tags);
+
+-- Auto-update updated_at trigger function
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists set_tasks_updated_at on public.tasks;
+create trigger set_tasks_updated_at
+  before update on public.tasks
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_notes_updated_at on public.notes;
+create trigger set_notes_updated_at
+  before update on public.notes
+  for each row execute function public.handle_updated_at();
+
+-- RLS
 alter table public.tasks enable row level security;
 alter table public.categories enable row level security;
 alter table public.notes enable row level security;

@@ -14,7 +14,6 @@ import { AchievementsModal, getAchievements } from '../components/dashboard/Achi
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { useTasks } from '../hooks/useTasks';
-import { createTask } from '../data/taskRepository';
 import { isOverdue } from '../domain/dateUtils';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, differenceInMinutes } from 'date-fns';
 import type { Task } from '../domain/types';
@@ -23,11 +22,24 @@ export const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
     const { open: openSidebar } = useSidebar();
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [showAchievements, setShowAchievements] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    const { tasks: allTasks, updateTaskStatus, deleteTask, refreshTasks: refreshAllTasks } = useTasks({ showCompleted: true });
-    const { tasks: pendingTasks, refreshTasks: refreshPendingTasks } = useTasks({ showCompleted: false });
+    // Single source of truth for all tasks (avoids double network calls)
+    const {
+        tasks: allTasks,
+        createTask,
+        createTasksBatch,
+        updateTask,
+        updateTaskStatus,
+        deleteTask,
+    } = useTasks({ showCompleted: true });
+
+    // Derive pending tasks client-side
+    const pendingTasks = useMemo(() => {
+        return allTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    }, [allTasks]);
 
     // Today's date formatted
     const todayFormatted = format(new Date(), "EEEE, d MMMM yyyy", { locale: tr });
@@ -114,7 +126,7 @@ export const DashboardPage: React.FC = () => {
         // Total completed all time
         const totalCompleted = allTasks.filter(t => t.status === 'done').length;
 
-        // Calculate streak
+        // Calculate current and longest streak across the past 365 days
         let currentStreak = 0;
         let longestStreak = 0;
         let checkDate = new Date(todayStart);
@@ -125,6 +137,8 @@ export const DashboardPage: React.FC = () => {
         }
 
         let tempStreak = 0;
+        let isCurrentStreakCounted = false;
+
         for (let i = 0; i < 365; i++) {
             const dayStart = startOfDay(checkDate);
             const dayEnd = endOfDay(checkDate);
@@ -139,16 +153,17 @@ export const DashboardPage: React.FC = () => {
                 tempStreak++;
                 if (tempStreak > longestStreak) longestStreak = tempStreak;
             } else {
-                if (tempStreak > 0 && currentStreak === 0) {
+                if (!isCurrentStreakCounted) {
                     currentStreak = tempStreak;
+                    isCurrentStreakCounted = true;
                 }
-                break;
+                tempStreak = 0;
             }
 
             checkDate = subDays(checkDate, 1);
         }
 
-        if (currentStreak === 0 && tempStreak > 0) {
+        if (!isCurrentStreakCounted) {
             currentStreak = tempStreak;
         }
 
@@ -156,7 +171,8 @@ export const DashboardPage: React.FC = () => {
             todayTotal,
             todayCompleted,
             todayOverdueCompleted,
-            todayPending: todayTotal,
+            priorityCount,
+            deadlineTodayCount,
             weekPending,
             monthPending,
             overduePending,
@@ -164,21 +180,26 @@ export const DashboardPage: React.FC = () => {
             totalCompleted,
             currentStreak,
             longestStreak,
-            todayHasCompleted,
-            priorityCount,
-            deadlineTodayCount,
         };
     }, [allTasks, pendingTasks]);
 
-    // Achievements
-    const achievements = useMemo(() => getAchievements({
-        totalCompleted: stats.totalCompleted,
-        currentStreak: stats.currentStreak,
-        longestStreak: stats.longestStreak,
-        todayCompleted: stats.todayCompleted,
-    }), [stats]);
+    // Achievements calculation
+    const achievements = useMemo(() => {
+        return getAchievements({
+            totalCompleted: stats.totalCompleted,
+            currentStreak: stats.currentStreak,
+            longestStreak: stats.longestStreak,
+            todayCompleted: stats.todayCompleted,
+        });
+    }, [stats]);
+
+    const unlockedCount = achievements.filter(a => a.unlocked).length;
 
     // Handlers
+    const handleTaskClick = (task: Task) => {
+        setSelectedTask(task);
+    };
+
     const handleCreateTask = async (data: TaskFormData) => {
         await createTask({
             ...data,
@@ -186,28 +207,34 @@ export const DashboardPage: React.FC = () => {
             startTime: data.startTime || undefined,
             endTime: data.endTime || undefined,
         });
-        await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
+        setIsFormOpen(false);
+    };
+
+    const handleUpdateTask = async (data: TaskFormData) => {
+        if (!editingTask) return;
+        await updateTask(editingTask.id, {
+            ...data,
+            endDate: data.endDate || undefined,
+            startTime: data.startTime || undefined,
+            endTime: data.endTime || undefined,
+        });
+        setEditingTask(null);
         setIsFormOpen(false);
     };
 
     const handleCreateTasksBatch = async (tasksData: TaskFormData[]) => {
-        for (const data of tasksData) {
-            await createTask({
-                ...data,
-                endDate: data.endDate || undefined,
-                startTime: data.startTime || undefined,
-                endTime: data.endTime || undefined,
-            });
-        }
-        await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
+        await createTasksBatch(tasksData.map(d => ({
+            ...d,
+            endDate: d.endDate || undefined,
+            startTime: d.startTime || undefined,
+            endTime: d.endTime || undefined,
+        })));
         setIsFormOpen(false);
     };
 
     const handleStatusChange = async (status: Task['status']) => {
         if (selectedTask) {
             await updateTaskStatus(selectedTask.id, status);
-            // Refresh both task lists to ensure UI is in sync
-            await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
             setSelectedTask(null);
         }
     };
@@ -215,8 +242,6 @@ export const DashboardPage: React.FC = () => {
     const handleDeleteTask = async () => {
         if (selectedTask) {
             await deleteTask(selectedTask.id);
-            // Refresh both task lists to ensure UI is in sync
-            await Promise.all([refreshAllTasks(), refreshPendingTasks()]);
             setSelectedTask(null);
         }
     };
@@ -243,7 +268,10 @@ export const DashboardPage: React.FC = () => {
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setIsFormOpen(true)}
+                        onClick={() => {
+                            setEditingTask(null);
+                            setIsFormOpen(true);
+                        }}
                         className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-gradient-to-r from-cyan-500 to-indigo-500 text-white text-[13px] font-medium hover:opacity-90 transition-opacity"
                     >
                         <Plus className="w-4 h-4" />
@@ -251,67 +279,77 @@ export const DashboardPage: React.FC = () => {
                     </button>
                     <button
                         onClick={() => navigate('/settings')}
-                        className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                        className="p-2 text-slate-400 hover:text-slate-100 transition-colors rounded-[10px] hover:bg-slate-800/40"
                     >
                         <Settings className="w-5 h-5" />
                     </button>
                 </div>
             </header>
 
-            {/* Main Content */}
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+                {/* Hero Card */}
+                <HeroCard
+                    todayTotal={stats.todayTotal}
+                    todayCompleted={stats.todayCompleted}
+                    todayOverdueCompleted={stats.todayOverdueCompleted}
+                    currentStreak={stats.currentStreak}
+                />
 
-                    <HeroCard
-                        todayTotal={stats.todayPending + stats.todayCompleted}
-                        todayCompleted={stats.todayCompleted}
-                        todayOverdueCompleted={stats.todayOverdueCompleted}
-                        currentStreak={stats.currentStreak}
-                    />
+                {/* KPI Grid */}
+                <KPIGrid
+                    today={stats.todayTotal}
+                    todayDetail={`${stats.todayCompleted} tamamlandı`}
+                    week={stats.weekPending}
+                    month={stats.monthPending}
+                    overdue={stats.overduePending}
+                    onTodayClick={() => navigate('/today')}
+                    onWeekClick={() => navigate('/week')}
+                    onMonthClick={() => navigate('/month')}
+                    onOverdueClick={() => navigate('/overdue')}
+                />
 
-                    {/* Daily Summary Card */}
-                    <DailySummaryCard
-                        totalTasks={stats.todayPending + stats.todayCompleted}
-                        completedTasks={stats.todayCompleted}
-                        highPriorityCount={stats.priorityCount}
-                        deadlineTodayCount={stats.deadlineTodayCount}
-                        overdueCount={stats.overduePending}
-                        todayOverdueCompleted={stats.todayOverdueCompleted}
-                    />
+                {/* Main 2-Column Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Left Column: 2/3 */}
+                    <div className="lg:col-span-2 space-y-4">
+                        {/* Upcoming Tasks */}
+                        <UpcomingTasks
+                            tasks={pendingTasks}
+                            onTaskClick={handleTaskClick}
+                        />
 
-                    {/* Two Column Layout */}
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        {/* Daily Summary */}
+                        <DailySummaryCard
+                            totalTasks={stats.todayTotal}
+                            completedTasks={stats.todayCompleted}
+                            highPriorityCount={stats.priorityCount}
+                            overdueCount={stats.overduePending}
+                            deadlineTodayCount={stats.deadlineTodayCount}
+                            todayOverdueCompleted={stats.todayOverdueCompleted}
+                        />
+                    </div>
 
-                        {/* Left Column - 3/5 */}
-                        <div className="lg:col-span-3 space-y-6">
-                            {/* KPI Grid */}
-                            <KPIGrid
-                                today={stats.todayPending}
-                                todayDetail={stats.todayCompleted > 0 ? `${stats.todayCompleted} tamamlandı${stats.todayOverdueCompleted > 0 ? ` (+${stats.todayOverdueCompleted} telafi)` : ''}` : undefined}
-                                week={stats.weekPending}
-                                month={stats.monthPending}
-                                overdue={stats.overduePending}
-                                onTodayClick={() => navigate('/today')}
-                                onWeekClick={() => navigate('/week')}
-                                onMonthClick={() => navigate('/month')}
-                                onOverdueClick={() => navigate('/overdue')}
-                            />
-                        </div>
+                    {/* Right Column: 1/3 */}
+                    <div className="space-y-4">
+                        {/* Progress */}
+                        <ProgressCard
+                            achievementsUnlocked={unlockedCount}
+                            achievementsTotal={achievements.length}
+                            onAchievementsClick={() => setShowAchievements(true)}
+                        />
 
-                        {/* Right Column - 2/5 */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* Upcoming Tasks */}
-                            <UpcomingTasks
-                                tasks={pendingTasks}
-                                onTaskClick={setSelectedTask}
-                            />
-
-                            {/* Progress Card */}
-                            <ProgressCard
-                                achievementsUnlocked={achievements.filter(a => a.unlocked).length}
-                                achievementsTotal={achievements.length}
-                                onAchievementsClick={() => setShowAchievements(true)}
-                            />
+                        {/* Quick Stats Panel */}
+                        <div className="glass-panel p-4 space-y-3">
+                            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                Hızlı İpuçları
+                            </h3>
+                            <div className="space-y-2 text-xs text-slate-400">
+                                <p>• <strong>Bugün</strong> sekmesinden günlük görevlerini yönet</p>
+                                <p>• <strong>Hafta/Ay</strong> takvimlerinde günlere tıklayarak o güne git</p>
+                                <p>• <strong>Notlar</strong> sekmesinden hızlı karalama yap ve göreve çevir</p>
+                                <p>• <strong>Gecikmişler</strong> sayfasından ertelenen işleri telafi et</p>
+                            </div>
                         </div>
                     </div>
 
@@ -326,9 +364,13 @@ export const DashboardPage: React.FC = () => {
             />
 
             <TaskFormModal
-                open={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                onSubmit={handleCreateTask}
+                open={isFormOpen || !!editingTask}
+                task={editingTask}
+                onClose={() => {
+                    setIsFormOpen(false);
+                    setEditingTask(null);
+                }}
+                onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
                 onSubmitBatch={handleCreateTasksBatch}
             />
 
@@ -343,6 +385,11 @@ export const DashboardPage: React.FC = () => {
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
+                            onEdit={() => {
+                                const t = selectedTask;
+                                setSelectedTask(null);
+                                setEditingTask(t);
+                            }}
                             onDelete={handleDeleteTask}
                             onStatusChange={handleStatusChange}
                         />

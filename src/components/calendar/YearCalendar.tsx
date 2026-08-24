@@ -13,7 +13,7 @@ import {
 import { tr } from 'date-fns/locale';
 import type { Task } from '../../domain/types';
 import { useCategories } from '../../hooks/useCategories';
-import { isTaskOnDate, isSameMonth, isToday } from '../../domain/dateUtils';
+import { isSameMonth, isToday } from '../../domain/dateUtils';
 
 export interface YearCalendarProps {
     date: Date;
@@ -35,9 +35,39 @@ export const YearCalendar: React.FC<YearCalendarProps> = ({
     const { getCategoryColor } = useCategories();
     const yearStart = startOfYear(date);
 
+    // Index tasks by date string (YYYY-MM-DD) for O(1) lookup
+    const taskDayMap = React.useMemo(() => {
+        const map = new Map<string, Task[]>();
+        for (const task of tasks) {
+            if (!task.startDate) continue;
+            try {
+                const [y1, m1, d1] = task.startDate.split('-').map(Number);
+                const start = new Date(y1, m1 - 1, d1);
+                const [y2, m2, d2] = (task.endDate || task.startDate).split('-').map(Number);
+                const end = new Date(y2, m2 - 1, d2);
+                if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) continue;
+
+                const daysInRange = eachDayOfInterval({ start, end });
+                for (const d of daysInRange) {
+                    const key = format(d, 'yyyy-MM-dd');
+                    const list = map.get(key);
+                    if (list) {
+                        list.push(task);
+                    } else {
+                        map.set(key, [task]);
+                    }
+                }
+            } catch {
+                // Ignore invalid dates defensively
+            }
+        }
+        return map;
+    }, [tasks]);
+
     const getDayStyle = (day: Date): React.CSSProperties | undefined => {
-        const dayTasks = tasks.filter(task => isTaskOnDate(task, day));
-        if (dayTasks.length === 0) return undefined;
+        const key = format(day, 'yyyy-MM-dd');
+        const dayTasks = taskDayMap.get(key);
+        if (!dayTasks || dayTasks.length === 0) return undefined;
 
         // Use the first task's category color
         const firstTask = dayTasks[0];

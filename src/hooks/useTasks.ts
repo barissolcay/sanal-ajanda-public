@@ -92,7 +92,6 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
 
             return newTask;
         } catch (err) {
-            // On error, refetch to ensure consistency
             await loadTasks();
             throw err;
         }
@@ -113,10 +112,15 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
     // Update task with optimistic update
     const updateTask = useCallback(async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
         try {
+            // Optimistic update
+            setTasks(prev => prev.map(t => {
+                if (t.id !== id) return t;
+                return { ...t, ...updates, updatedAt: new Date().toISOString() };
+            }));
+
             const updated = await taskRepository.updateTask(id, updates);
             if (updated) {
                 setTasks(prev => {
-                    // Check if updated task still matches filters
                     if (!matchesFilters(updated)) {
                         return prev.filter(t => t.id !== id);
                     }
@@ -138,7 +142,6 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
 
             const result = await taskRepository.deleteTask(id);
             if (!result) {
-                // If delete failed, refetch
                 await loadTasks();
             }
             return result;
@@ -150,15 +153,12 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
 
     // Update task status with optimistic update
     const updateTaskStatus = useCallback(async (id: string, newStatus: TaskStatus) => {
-        // Find the task first for optimistic update
         const taskToUpdate = tasks.find(t => t.id === id);
 
         try {
-            // Optimistic update
             if (taskToUpdate) {
                 const optimisticTask = { ...taskToUpdate, status: newStatus };
                 if (!matchesFilters(optimisticTask)) {
-                    // If it won't match filters after update, remove it
                     setTasks(prev => prev.filter(t => t.id !== id));
                 } else {
                     setTasks(prev => prev.map(t => t.id === id ? optimisticTask : t));
@@ -166,8 +166,6 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
             }
 
             const updated = await taskRepository.updateTaskStatus(id, newStatus);
-
-            // Sync with actual response
             if (updated && matchesFilters(updated)) {
                 setTasks(prev => prev.map(t => t.id === id ? updated : t));
             }

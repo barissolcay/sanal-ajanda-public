@@ -10,7 +10,6 @@ import {
     Tag,
     X,
     StickyNote,
-    Sparkles,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useNotes } from '../hooks/useNotes';
@@ -67,9 +66,9 @@ export const NotesPage: React.FC = () => {
             const matchesSearch = !searchQuery ||
                 n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                n.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                (n.tags || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
 
-            const matchesTag = !selectedTag || n.tags.includes(selectedTag);
+            const matchesTag = !selectedTag || (n.tags || []).includes(selectedTag);
 
             return matchesSearch && matchesTag;
         });
@@ -136,6 +135,11 @@ export const NotesPage: React.FC = () => {
 
         setIsNoteModalOpen(false);
     };
+    const handleDeleteNote = async (id: string) => {
+        if (window.confirm('Bu notu silmek istediğinize emin misiniz?')) {
+            await deleteNote(id);
+        }
+    };
 
     const handleConvertToTask = (note: Note) => {
         setInitialTaskData({
@@ -180,41 +184,41 @@ export const NotesPage: React.FC = () => {
                         className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-all shadow-lg shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98] shrink-0"
                     >
                         <Plus className="w-4 h-4" />
-                        <span>Yeni Not Ekle</span>
+                        <span>Yeni Not</span>
                     </button>
                 </div>
 
-                {/* Search & Tag Filter Bar */}
-                <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search & Filter Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-4">
                     <div className="relative flex-1">
-                        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                         <input
                             type="text"
-                            placeholder="Notlarda veya etiketlerde ara..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/60 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                            placeholder="Notlarda ara..."
+                            className="w-full pl-10 pr-4 py-2 bg-slate-900/60 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/60 transition-all"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         )}
                     </div>
 
-                    {/* Tag Filter Pills */}
+                    {/* Quick Tag Filter Pills */}
                     {allTags.length > 0 && (
-                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                             <button
                                 onClick={() => setSelectedTag(null)}
                                 className={clsx(
-                                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
+                                    "px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0",
                                     !selectedTag
-                                        ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 shadow-sm"
-                                        : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                        ? "bg-indigo-600 text-white shadow-sm"
+                                        : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800"
                                 )}
                             >
                                 Tümü
@@ -224,10 +228,10 @@ export const NotesPage: React.FC = () => {
                                     key={tag}
                                     onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
                                     className={clsx(
-                                        "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 border",
+                                        "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1",
                                         selectedTag === tag
-                                            ? "bg-indigo-500/30 text-indigo-200 border-indigo-400 shadow-sm"
-                                            : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                            ? "bg-indigo-600 text-white shadow-sm"
+                                            : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800"
                                     )}
                                 >
                                     <Tag className="w-3 h-3" />
@@ -239,29 +243,29 @@ export const NotesPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Notes List / Grid */}
+            {/* Content Body */}
             <div className="p-4 md:p-6 pt-2 flex-1">
                 {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
+                    <div className="flex items-center justify-center h-48 text-slate-500 text-sm">
+                        Notlar yükleniyor...
                     </div>
                 ) : filteredNotes.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center glass-panel rounded-2xl p-8 max-w-md mx-auto">
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 mb-4 border border-indigo-500/20">
-                            <Sparkles className="w-7 h-7" />
+                    <div className="flex flex-col items-center justify-center h-64 text-center p-6 rounded-2xl border border-dashed border-slate-800">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3">
+                            <StickyNote className="w-6 h-6" />
                         </div>
-                        <h3 className="text-base font-semibold text-slate-200">
-                            {searchQuery || selectedTag ? 'Eşleşen not bulunamadı' : 'Henüz hiç not eklemedin'}
+                        <h3 className="text-base font-semibold text-slate-300 mb-1">
+                            {searchQuery || selectedTag ? 'Eşleşen not bulunamadı' : 'Henüz not eklemediniz'}
                         </h3>
-                        <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                        <p className="text-xs text-slate-500 max-w-sm mb-4">
                             {searchQuery || selectedTag
-                                ? 'Farklı bir arama kelimesi veya etiket deneyebilirsin.'
-                                : 'Aklına gelen bir kelimeyi, hatırayı veya fikri hemen kaydetmeye başla!'}
+                                ? 'Arama kriterlerinizi temizleyerek tekrar deneyebilirsiniz.'
+                                : 'Aklınıza gelen fikirleri, yeni öğrendiğiniz kelimeleri veya özel anılarınızı buraya kaydedebilirsiniz.'}
                         </p>
                         {!searchQuery && !selectedTag && (
                             <button
                                 onClick={openCreateModal}
-                                className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-all shadow-md"
+                                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all shadow-md shadow-indigo-600/20"
                             >
                                 İlk Notunu Oluştur
                             </button>
@@ -284,7 +288,7 @@ export const NotesPage: React.FC = () => {
                                             key={note.id}
                                             note={note}
                                             onEdit={() => openEditModal(note)}
-                                            onDelete={() => deleteNote(note.id)}
+                                            onDelete={() => handleDeleteNote(note.id)}
                                             onTogglePin={() => togglePinNote(note.id)}
                                             onConvertToTask={() => handleConvertToTask(note)}
                                         />
@@ -310,7 +314,7 @@ export const NotesPage: React.FC = () => {
                                             key={note.id}
                                             note={note}
                                             onEdit={() => openEditModal(note)}
-                                            onDelete={() => deleteNote(note.id)}
+                                            onDelete={() => handleDeleteNote(note.id)}
                                             onTogglePin={() => togglePinNote(note.id)}
                                             onConvertToTask={() => handleConvertToTask(note)}
                                         />

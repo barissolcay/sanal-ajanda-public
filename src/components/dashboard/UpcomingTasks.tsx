@@ -16,14 +16,11 @@ interface UpcomingTasksProps {
 const getMinutesUntilStart = (task: Task): number => {
     if (!task.startDate) return 999999;
     const now = new Date();
-    const startDate = new Date(task.startDate);
-
-    if (task.startTime) {
-        const [hours, minutes] = task.startTime.split(':').map(Number);
-        startDate.setHours(hours, minutes, 0, 0);
-    } else {
-        startDate.setHours(23, 59, 59, 999);
-    }
+    const [year, month, day] = task.startDate.split('-').map(Number);
+    const [hours, minutes] = task.startTime
+        ? task.startTime.split(':').map(Number)
+        : [23, 59];
+    const startDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
     return differenceInMinutes(startDate, now);
 };
