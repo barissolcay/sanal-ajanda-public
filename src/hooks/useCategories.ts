@@ -38,6 +38,8 @@ export interface UseCategoriesReturn {
     createCategory: (data: Omit<Category, 'id' | 'order'>) => Promise<Category>;
     updateCategory: (id: string, updates: Partial<Omit<Category, 'id' | 'isDefault'>>) => Promise<Category | undefined>;
     deleteCategory: (id: string) => Promise<boolean>;
+    reorderCategories: (categoryIds: string[]) => Promise<void>;
+    moveCategory: (id: string, direction: 'up' | 'down') => Promise<void>;
     refreshCategories: () => Promise<void>;
     getCategoryById: (id: string) => Category | undefined;
     getCategoryColor: (id: string) => string;
@@ -96,6 +98,43 @@ export function useCategories(): UseCategoriesReturn {
         return result;
     }, [loadCategories]);
 
+    // Reorder categories
+    const reorderCategories = useCallback(async (categoryIds: string[]) => {
+        // Optimistically sort categories locally
+        const map = new Map(categories.map(c => [c.id, c]));
+        const reordered: Category[] = [];
+        categoryIds.forEach((id, idx) => {
+            const cat = map.get(id);
+            if (cat) {
+                reordered.push({ ...cat, order: idx });
+            }
+        });
+        setCategories(reordered);
+        cacheCategories(reordered);
+
+        await categoryRepository.reorderCategories(categoryIds);
+        await loadCategories();
+    }, [categories, loadCategories]);
+
+    // Move single category up or down
+    const moveCategory = useCallback(async (id: string, direction: 'up' | 'down') => {
+        const index = categories.findIndex(c => c.id === id);
+        if (index === -1) return;
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= categories.length) return;
+
+        const newCategories = [...categories];
+        const [moved] = newCategories.splice(index, 1);
+        newCategories.splice(targetIndex, 0, moved);
+
+        const updatedCategories = newCategories.map((c, idx) => ({ ...c, order: idx }));
+        setCategories(updatedCategories);
+        cacheCategories(updatedCategories);
+
+        await categoryRepository.reorderCategories(updatedCategories.map(c => c.id));
+        await loadCategories();
+    }, [categories, loadCategories]);
+
     // Get category by ID
     const getCategoryById = useCallback((id: string) => {
         return categories.find(c => c.id === id);
@@ -114,6 +153,8 @@ export function useCategories(): UseCategoriesReturn {
         createCategory,
         updateCategory,
         deleteCategory,
+        reorderCategories,
+        moveCategory,
         refreshCategories: loadCategories,
         getCategoryById,
         getCategoryColor,

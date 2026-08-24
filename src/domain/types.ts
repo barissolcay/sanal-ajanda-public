@@ -58,6 +58,26 @@ export const DEFAULT_CATEGORIES: Category[] = [
     { id: 'travel', name: 'Gezme Listesi', icon: 'MapPin', color: '#06b6d4', isDefault: true, order: 4 },
 ];
 
+export const AVAILABLE_CATEGORY_ICONS = [
+    { name: 'List', label: 'Liste' },
+    { name: 'BookOpen', label: 'Kitap / Okuma' },
+    { name: 'Film', label: 'Film / Dizi' },
+    { name: 'Target', label: 'Hedef' },
+    { name: 'MapPin', label: 'Gezi / Seyahat' },
+    { name: 'Briefcase', label: 'İş / Proje' },
+    { name: 'GraduationCap', label: 'Ders / Eğitim' },
+    { name: 'Code', label: 'Yazılım / Kod' },
+    { name: 'Heart', label: 'Sağlık / Yaşam' },
+    { name: 'Dumbbell', label: 'Spor / Egzersiz' },
+    { name: 'Music', label: 'Müzik / Sanat' },
+    { name: 'ShoppingBag', label: 'Alışveriş' },
+    { name: 'Coffee', label: 'Kişisel / Mola' },
+    { name: 'DollarSign', label: 'Finans / Bütçe' },
+    { name: 'Sparkles', label: 'Özel / Fikir' },
+    { name: 'Inbox', label: 'Gelen / Havuz' },
+    { name: 'Layers', label: 'Planlar / Katmanlar' },
+] as const;
+
 // Status display info
 export const STATUS_INFO: Record<TaskStatus, { label: string; color: string }> = {
     pending: { label: 'Bekliyor', color: 'text-slate-400' },

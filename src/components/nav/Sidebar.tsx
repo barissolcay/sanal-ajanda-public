@@ -12,6 +12,17 @@ import {
     Film,
     Target,
     MapPin,
+    Briefcase,
+    Heart,
+    Dumbbell,
+    Code,
+    Music,
+    GraduationCap,
+    Coffee,
+    ShoppingBag,
+    DollarSign,
+    Inbox,
+    Layers,
     CheckCircle2,
     Settings,
     Sparkles,
@@ -34,6 +45,7 @@ interface NavItem {
     label: string;
     color?: string;
     showBadge?: boolean;
+    badgeCount?: number;
 }
 
 const viewItems: NavItem[] = [
@@ -44,8 +56,6 @@ const viewItems: NavItem[] = [
     { to: '/year', icon: <CalendarClock className="w-5 h-5" />, label: 'Bu Yıl' },
 ];
 
-// Note: otherItems is now generated inside the component to support dynamic badge
-
 // Icon map for dynamic categories
 const iconMap: Record<string, LucideIcon> = {
     List,
@@ -53,10 +63,21 @@ const iconMap: Record<string, LucideIcon> = {
     Film,
     Target,
     MapPin,
+    Briefcase,
+    Heart,
+    Dumbbell,
+    Code,
+    Music,
+    GraduationCap,
+    Coffee,
+    ShoppingBag,
+    DollarSign,
+    Sparkles,
+    Inbox,
+    Layers,
     Calendar,
     CheckCircle2,
     Settings,
-    Sparkles,
 };
 
 const getIconComponent = (iconName: string): React.ReactNode => {
@@ -64,9 +85,9 @@ const getIconComponent = (iconName: string): React.ReactNode => {
     return <IconComponent className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />;
 };
 
-const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color, showBadge }) => {
+const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color, showBadge, badgeCount }) => {
     const location = useLocation();
-    const isActive = location.pathname === to || (to !== '/' && to !== '/lists' && location.pathname.startsWith(to));
+    const isActive = location.pathname === to || (to !== '/' && to !== '/lists' && location.pathname === to);
 
     return (
         <NavLink
@@ -84,9 +105,14 @@ const NavItemComponent: React.FC<NavItem> = ({ to, icon, label, color, showBadge
             )} style={color ? { color } : undefined}>
                 {icon}
             </span>
-            <span className="font-medium flex items-center gap-2">
-                {label}
-                {showBadge && (
+            <span className="font-medium flex items-center justify-between flex-1 gap-2">
+                <span className="truncate">{label}</span>
+                {badgeCount !== undefined && badgeCount > 0 && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60 shadow-sm">
+                        {badgeCount}
+                    </span>
+                )}
+                {showBadge && (badgeCount === undefined || badgeCount === 0) && (
                     <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
                 )}
             </span>
@@ -120,6 +146,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         return tasks.filter(task => task.status !== 'done' && isOverdue(task)).length;
     }, [tasks]);
 
+    // Count undated (backlog plans) tasks
+    const undatedCount = React.useMemo(() => {
+        return tasks.filter(task => task.status !== 'done' && !task.startDate).length;
+    }, [tasks]);
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
@@ -129,27 +160,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
         close();
     }, [location.pathname]);
 
-    // Convert categories to nav items - defaults first, custom (user-added) last
+    // Sorted categories (defaults first, then custom sorted by order)
     const sortedCategories = [...categories].sort((a, b) => {
-        // Default categories come first
         if (a.isDefault && !b.isDefault) return -1;
         if (!a.isDefault && b.isDefault) return 1;
-        // Within same type, sort by order
         return a.order - b.order;
     });
 
-    const listItems: NavItem[] = sortedCategories.map((cat: Category) => ({
-        to: `/lists/${cat.id}`,
-        icon: getIconComponent(cat.icon),
-        label: cat.name,
-        color: cat.color,
-    }));
+    const listItems: NavItem[] = [
+        // Dedicated Planlar / Süresiz entry
+        {
+            to: '/lists/undated',
+            icon: <Layers className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" />,
+            label: 'Planlar / Süresiz',
+            color: '#06b6d4',
+            badgeCount: undatedCount > 0 ? undatedCount : undefined,
+        },
+        // Category entries
+        ...sortedCategories.map((cat: Category) => ({
+            to: `/lists/${cat.id}`,
+            icon: getIconComponent(cat.icon),
+            label: cat.name,
+            color: cat.color,
+        })),
+    ];
 
     // Dynamic otherItems with overdue badge
     const otherItems: NavItem[] = [
         { to: '/lists', icon: <LayoutGrid className="w-5 h-5" />, label: 'Tüm Listeler' },
         { to: '/notes', icon: <StickyNote className="w-5 h-5" />, label: 'Notlar' },
-        { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar', showBadge: overdueCount > 0 },
+        { to: '/overdue', icon: <AlertCircle className="w-5 h-5" />, label: 'Sessiz Çığlıklar', badgeCount: overdueCount > 0 ? overdueCount : undefined, showBadge: overdueCount > 0 },
         { to: '/completed', icon: <CheckCircle2 className="w-5 h-5" />, label: 'Tamamlananlar' },
         { to: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Ayarlar' },
     ];

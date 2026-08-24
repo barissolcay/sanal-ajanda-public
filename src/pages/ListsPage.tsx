@@ -1,7 +1,7 @@
 // ListsPage - Category-filtered task lists
 import React, { useState, useMemo } from 'react';
 import { clsx } from 'clsx';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { TopBar } from '../components/nav/TopBar';
 import { TaskList } from '../components/tasks/TaskList';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
@@ -13,6 +13,7 @@ import type { Task } from '../domain/types';
 
 export const ListsPage: React.FC = () => {
     const { category } = useParams<{ category?: string }>();
+    const navigate = useNavigate();
     const { settings } = useSettings();
     const { categories } = useCategories();
     const [showCompleted, setShowCompleted] = useState(settings.showCompletedByDefault);
@@ -165,7 +166,14 @@ export const ListsPage: React.FC = () => {
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => {
+                                    setActiveTab(tab.id);
+                                    if (tab.id === 'all') {
+                                        navigate('/lists');
+                                    } else {
+                                        navigate(`/lists/${tab.id}`);
+                                    }
+                                }}
                                 className={clsx(
                                     'px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 whitespace-nowrap',
                                     'hover:scale-[1.02] hover:shadow-md',
