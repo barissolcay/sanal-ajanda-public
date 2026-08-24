@@ -202,6 +202,24 @@ export function isTaskOnDate(task: Task, date: Date): boolean {
     return dateStr >= startStr && dateStr <= endStr;
 }
 
+/**
+ * Check if a completed task was overdue before being completed today (Telafi metric)
+ */
+export function isOverdueCompletedToday(task: Task, today: Date = new Date()): boolean {
+    if (task.status !== 'done') return false;
+    if (!task.startDate) return false;
+
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+    const completedDate = new Date(task.updatedAt);
+    const isCompletedToday = completedDate >= todayStart && completedDate <= todayEnd;
+
+    if (!isCompletedToday) return false;
+
+    const taskEndDate = startOfDay(parseISO(task.endDate || task.startDate));
+    return isBefore(taskEndDate, todayStart);
+}
+
 const getPriorityWeight = (p: Task['priority']): number => {
     if (p === 2) return 2; // Yüksek
     if (p === 0) return 1; // Normal

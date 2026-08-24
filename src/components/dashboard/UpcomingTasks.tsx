@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, ChevronDown, X, AlertTriangle } from 'lucide-react';
 import type { Task } from '../../domain/types';
-import { startOfDay, endOfDay, differenceInMinutes } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
 import { clsx } from 'clsx';
 import { useCategories } from '../../hooks/useCategories';
-import { isOverdue } from '../../domain/dateUtils';
+import { isOverdue, isTaskOnDate } from '../../domain/dateUtils';
 
 interface UpcomingTasksProps {
     tasks: Task[];
@@ -45,13 +45,7 @@ const formatCountdown = (minutes: number, task: Task): string => {
 
 // Check if task is today
 const isTaskToday = (task: Task): boolean => {
-    if (!task.startDate) return false;
-    const today = new Date();
-    const todayStart = startOfDay(today);
-    const todayEnd = endOfDay(today);
-    const taskDate = new Date(task.startDate);
-    const endDate = task.endDate ? new Date(task.endDate) : taskDate;
-    return (taskDate >= todayStart && taskDate <= todayEnd) || (endDate >= todayStart && endDate <= todayEnd);
+    return isTaskOnDate(task, new Date());
 };
 
 // Normal task item (non-overdue)

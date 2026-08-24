@@ -17,6 +17,7 @@ import {
     formatDateRange,
     formatTimeRange,
     sortTasksByPriority,
+    isOverdueCompletedToday,
 } from './dateUtils';
 import type { Task } from './types';
 
@@ -503,5 +504,77 @@ describe('sortTasksByPriority', () => {
         expect(result.activeWithTime[0].id).toBe('3'); // 09:00 High
         expect(result.activeWithTime[1].id).toBe('2'); // 09:00 Normal
         expect(result.activeWithTime[2].id).toBe('1'); // 14:00 High
+    });
+});
+
+describe('isOverdue with multi-day tasks', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2025-12-06T15:30:00'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('should return false when multi-day task ends today or in the future', () => {
+        const taskEndingToday = createTask({
+            startDate: '2025-12-04',
+            endDate: '2025-12-06',
+        });
+        expect(isOverdue(taskEndingToday)).toBe(false);
+
+        const taskEndingTomorrow = createTask({
+            startDate: '2025-12-04',
+            endDate: '2025-12-07',
+        });
+        expect(isOverdue(taskEndingTomorrow)).toBe(false);
+    });
+
+    it('should return true when multi-day task ended yesterday', () => {
+        const taskEndedYesterday = createTask({
+            startDate: '2025-12-01',
+            endDate: '2025-12-05',
+        });
+        expect(isOverdue(taskEndedYesterday)).toBe(true);
+    });
+});
+
+describe('isOverdueCompletedToday (Telafi calculation)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2025-12-06T15:30:00'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('should return true for task scheduled before today but completed today', () => {
+        const overdueTask = createTask({
+            status: 'done',
+            startDate: '2025-12-04',
+            endDate: '2025-12-04',
+            updatedAt: '2025-12-06T11:00:00Z',
+        });
+        expect(isOverdueCompletedToday(overdueTask)).toBe(true);
+    });
+
+    it('should return false for today task completed today', () => {
+        const todayTask = createTask({
+            status: 'done',
+            startDate: '2025-12-06',
+            updatedAt: '2025-12-06T11:00:00Z',
+        });
+        expect(isOverdueCompletedToday(todayTask)).toBe(false);
+    });
+
+    it('should return false for pending overdue task', () => {
+        const pendingTask = createTask({
+            status: 'pending',
+            startDate: '2025-12-04',
+            updatedAt: '2025-12-06T11:00:00Z',
+        });
+        expect(isOverdueCompletedToday(pendingTask)).toBe(false);
     });
 });

@@ -14,7 +14,7 @@ import { AchievementsModal, getAchievements } from '../components/dashboard/Achi
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { useTasks } from '../hooks/useTasks';
-import { isOverdue } from '../domain/dateUtils';
+import { isOverdue, isOverdueCompletedToday } from '../domain/dateUtils';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, differenceInMinutes } from 'date-fns';
 import type { Task } from '../domain/types';
 
@@ -86,15 +86,7 @@ export const DashboardPage: React.FC = () => {
         }).length;
 
         // Overdue completed today (tasks finished today whose scheduled date was in the past)
-        const todayOverdueCompleted = allTasks.filter(t => {
-            if (t.status !== 'done') return false;
-            const completedDate = new Date(t.updatedAt);
-            const isCompletedToday = completedDate >= todayStart && completedDate <= todayEnd;
-            if (!isCompletedToday) return false;
-            if (!t.startDate) return false;
-            const taskEndDate = startOfDay(new Date(t.endDate || t.startDate));
-            return taskEndDate < todayStart;
-        }).length;
+        const todayOverdueCompleted = allTasks.filter(t => isOverdueCompletedToday(t, now)).length;
 
         // Week pending
         const weekPending = pendingTasks.filter(t => isInRange(t, weekStart, weekEnd)).length;
