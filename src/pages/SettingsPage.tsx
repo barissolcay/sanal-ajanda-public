@@ -237,6 +237,27 @@ export const SettingsPage: React.FC = () => {
 
                         {/* Category list */}
                         <div className="space-y-2">
+                            {/* Dedicated Planlar / Süresiz System View Item */}
+                            <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-xl border border-cyan-500/30 shadow-sm">
+                                <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white shadow-sm"
+                                    style={{ backgroundColor: '#06b6d4' }}
+                                >
+                                    <Layers className="w-4 h-4" />
+                                </div>
+
+                                <div className="flex-1 flex items-center gap-2 min-w-0">
+                                    <span className="text-slate-200 font-semibold truncate">Planlar / Süresiz</span>
+                                    <span className="text-[10px] text-cyan-300 px-2 py-0.5 bg-cyan-500/15 border border-cyan-500/30 rounded-full font-medium">
+                                        Sistem Havuzu
+                                    </span>
+                                </div>
+
+                                <span className="text-xs text-slate-400 hidden sm:inline">
+                                    Tarihsiz planlar havuzu
+                                </span>
+                            </div>
+
                             {sortedCategories.map((category, index) => {
                                 const IconComponent = getCategoryIcon(category.icon);
                                 const isFirst = index === 0;
