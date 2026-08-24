@@ -66,7 +66,14 @@ export const DashboardPage: React.FC = () => {
 
         // Today's pending tasks (matching TodayPage logic)
         const todayPendingTasks = pendingTasks.filter(t => isInRange(t, todayStart, todayEnd));
-        const todayTotal = todayPendingTasks.length;
+        const todayPendingCount = todayPendingTasks.length;
+
+        // Today's scheduled tasks that are completed (scheduled for today and done)
+        const todayScheduledCompletedTasks = allTasks.filter(t => t.status === 'done' && isInRange(t, todayStart, todayEnd));
+        const todayScheduledCompleted = todayScheduledCompletedTasks.length;
+
+        // Total scheduled tasks for today (pending + completed)
+        const todayTotal = todayPendingCount + todayScheduledCompleted;
 
         // Priority count (tasks with priority === 2, which is high priority)
         const priorityCount = todayPendingTasks.filter(t => t.priority === 2).length;
@@ -78,8 +85,8 @@ export const DashboardPage: React.FC = () => {
             return endDate >= todayStart && endDate <= todayEnd;
         }).length;
 
-        // Completed today (based on updatedAt)
-        const todayCompleted = allTasks.filter(t => {
+        // Total tasks completed today (for streak / achievements)
+        const totalCompletedToday = allTasks.filter(t => {
             if (t.status !== 'done') return false;
             const completedDate = new Date(t.updatedAt);
             return completedDate >= todayStart && completedDate <= todayEnd;
@@ -123,7 +130,7 @@ export const DashboardPage: React.FC = () => {
         let longestStreak = 0;
         let checkDate = new Date(todayStart);
 
-        const todayHasCompleted = todayCompleted > 0;
+        const todayHasCompleted = totalCompletedToday > 0;
         if (!todayHasCompleted) {
             checkDate = subDays(checkDate, 1);
         }
@@ -161,7 +168,9 @@ export const DashboardPage: React.FC = () => {
 
         return {
             todayTotal,
-            todayCompleted,
+            todayPendingCount,
+            todayScheduledCompleted,
+            todayCompleted: totalCompletedToday,
             todayOverdueCompleted,
             priorityCount,
             deadlineTodayCount,
@@ -283,7 +292,7 @@ export const DashboardPage: React.FC = () => {
                 {/* Hero Card */}
                 <HeroCard
                     todayTotal={stats.todayTotal}
-                    todayCompleted={stats.todayCompleted}
+                    todayCompleted={stats.todayScheduledCompleted}
                     todayOverdueCompleted={stats.todayOverdueCompleted}
                     currentStreak={stats.currentStreak}
                 />
@@ -291,7 +300,7 @@ export const DashboardPage: React.FC = () => {
                 {/* KPI Grid */}
                 <KPIGrid
                     today={stats.todayTotal}
-                    todayDetail={`${stats.todayCompleted} tamamlandı`}
+                    todayDetail={`${stats.todayScheduledCompleted} tamamlandı`}
                     week={stats.weekPending}
                     month={stats.monthPending}
                     overdue={stats.overduePending}
@@ -314,7 +323,7 @@ export const DashboardPage: React.FC = () => {
                         {/* Daily Summary */}
                         <DailySummaryCard
                             totalTasks={stats.todayTotal}
-                            completedTasks={stats.todayCompleted}
+                            completedTasks={stats.todayScheduledCompleted}
                             highPriorityCount={stats.priorityCount}
                             overdueCount={stats.overduePending}
                             deadlineTodayCount={stats.deadlineTodayCount}
