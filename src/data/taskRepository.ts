@@ -133,14 +133,16 @@ export async function updateTask(id: string, updates: Partial<Omit<Task, 'id' | 
  * Delete a task by ID
  */
 export async function deleteTask(id: string): Promise<boolean> {
+    const userId = await getCurrentUserId();
     const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', userId);
 
     if (error) {
         console.error('Error deleting task:', error);
-        return false;
+        throw error;
     }
     return true;
 }
@@ -170,7 +172,7 @@ export async function getAllTasks(): Promise<Task[]> {
 
     if (error) {
         console.error('Error fetching tasks:', error);
-        return [];
+        throw error;
     }
 
     return (data || []).map(mapToDomain);

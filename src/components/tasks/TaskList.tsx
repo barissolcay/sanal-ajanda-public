@@ -3,6 +3,7 @@ import React from 'react';
 import { TaskCard } from './TaskCard';
 import type { Task } from '../../domain/types';
 import { ClipboardList } from 'lucide-react';
+import { useCategories } from '../../hooks/useCategories';
 
 export interface TaskListProps {
     tasks: Task[];
@@ -19,6 +20,8 @@ export const TaskList: React.FC<TaskListProps> = ({
     onStatusChange,
     emptyMessage = 'Görev bulunamadı',
 }) => {
+    const { getCategoryById, getCategoryColor } = useCategories();
+
     if (tasks.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-12 text-slate-500">
@@ -37,6 +40,8 @@ export const TaskList: React.FC<TaskListProps> = ({
                     selected={task.id === selectedTaskId}
                     onClick={() => onTaskSelect?.(task)}
                     onStatusChange={(status) => onStatusChange?.(task.id, status)}
+                    getCategoryById={getCategoryById}
+                    getCategoryColor={getCategoryColor}
                 />
             ))}
         </div>

@@ -1,5 +1,5 @@
 // DashboardPage - Professional personal dashboard
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -17,6 +17,7 @@ import { useTasks } from '../hooks/useTasks';
 import { isOverdue, isOverdueCompletedToday } from '../domain/dateUtils';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, differenceInMinutes } from 'date-fns';
 import type { Task } from '../domain/types';
+import { supabase } from '../lib/supabaseClient';
 
 export const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
@@ -25,6 +26,16 @@ export const DashboardPage: React.FC = () => {
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [showAchievements, setShowAchievements] = useState(false);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [userName, setUserName] = useState('Kullanıcı');
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            const name = data.user?.user_metadata?.full_name 
+                || data.user?.email?.split('@')[0] 
+                || 'Kullanıcı';
+            setUserName(name);
+        });
+    }, []);
 
     // Single source of truth for all tasks (avoids double network calls)
     const {
@@ -295,6 +306,7 @@ export const DashboardPage: React.FC = () => {
                     todayCompleted={stats.todayScheduledCompleted}
                     todayOverdueCompleted={stats.todayOverdueCompleted}
                     currentStreak={stats.currentStreak}
+                    userName={userName}
                 />
 
                 {/* KPI Grid */}

@@ -17,7 +17,7 @@ export async function getSettings(): Promise<Settings> {
     }
 
     try {
-        return JSON.parse(stored) as Settings;
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
     } catch {
         return DEFAULT_SETTINGS;
     }

@@ -203,7 +203,10 @@ export async function updateCategory(id: string, updates: Partial<Omit<Category,
         .select()
         .single();
 
-    if (error) return undefined;
+    if (error) {
+        console.error('Error updating category:', error);
+        throw error;
+    }
 
     return {
         id: data.id,
@@ -246,14 +249,15 @@ export async function deleteCategory(id: string): Promise<boolean> {
 export async function reorderCategories(categoryIds: string[]): Promise<void> {
     const userId = await getCurrentUserId();
 
-    // Category lists are small, so sequential updates avoid requiring an RPC.
-    for (let i = 0; i < categoryIds.length; i++) {
-        await supabase
-            .from('categories')
-            .update({ order: i })
-            .eq('id', categoryIds[i])
-            .eq('user_id', userId);
-    }
+    await Promise.all(
+        categoryIds.map((id, i) =>
+            supabase
+                .from('categories')
+                .update({ order: i })
+                .eq('id', id)
+                .eq('user_id', userId)
+        )
+    );
 }
 
 /**

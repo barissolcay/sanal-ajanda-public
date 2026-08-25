@@ -132,6 +132,7 @@ export const MonthPage: React.FC = () => {
         if (editingTask) {
             await updateTask(editingTask.id, {
                 ...data,
+                color: (data.color || null) as any,
                 endDate: data.endDate || undefined,
                 startTime: data.startTime || undefined,
                 endTime: data.endTime || undefined,
@@ -444,7 +445,10 @@ export const MonthPage: React.FC = () => {
                             <TaskDetailPanel
                                 task={selectedTask}
                                 onClose={() => setSelectedTask(null)}
-                                onEdit={() => setEditingTask(selectedTask)}
+                                onEdit={() => {
+                                    setEditingTask(selectedTask);
+                                    setSelectedTask(null);
+                                }}
                                 onDelete={handleDeleteTask}
                                 onStatusChange={handleStatusChange}
                             />

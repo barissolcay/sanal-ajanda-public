@@ -256,7 +256,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className }) => {
                         <span className="font-medium text-sm">Çıkış Yap</span>
                     </button>
                     <p className="text-xs text-slate-700 text-center mt-2">
-                        © 2025 Sanal Ajandam
+                        © {new Date().getFullYear()} Sanal Ajandam
                     </p>
                 </div>
             </aside>

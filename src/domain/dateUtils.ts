@@ -220,7 +220,7 @@ export function isOverdueCompletedToday(task: Task, today: Date = new Date()): b
     return isBefore(taskEndDate, todayStart);
 }
 
-const getPriorityWeight = (p: Task['priority']): number => {
+export const getPriorityWeight = (p: Task['priority']): number => {
     if (p === 2) return 2; // Yüksek
     if (p === 0) return 1; // Normal
     return 0;              // Düşük (1)

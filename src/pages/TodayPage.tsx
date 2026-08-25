@@ -94,6 +94,7 @@ export const TodayPage: React.FC = () => {
         if (editingTask) {
             await updateTask(editingTask.id, {
                 ...data,
+                color: (data.color || null) as any,
                 endDate: data.endDate || undefined,
                 startTime: data.startTime || undefined,
                 endTime: data.endTime || undefined,
@@ -168,6 +169,7 @@ export const TodayPage: React.FC = () => {
                             onClose={() => setSelectedTask(null)}
                             onEdit={() => {
                                 setEditingTask(selectedTask);
+                                setSelectedTask(null);
                             }}
                             onDelete={handleDeleteTask}
                             onStatusChange={handleStatusChange}

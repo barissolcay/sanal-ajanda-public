@@ -16,7 +16,7 @@ export const HeroCard: React.FC<HeroCardProps> = ({
     todayCompleted,
     todayOverdueCompleted = 0,
     currentStreak,
-    userName = 'Barış',
+    userName = 'Kullanıcı',
 }) => {
     const progress = todayTotal > 0 ? Math.min((todayCompleted / todayTotal) * 100, 100) : (todayCompleted > 0 ? 100 : 0);
 

@@ -5,7 +5,7 @@ import type { Task } from '../../domain/types';
 import { differenceInMinutes } from 'date-fns';
 import { clsx } from 'clsx';
 import { useCategories } from '../../hooks/useCategories';
-import { isOverdue, isTaskOnDate } from '../../domain/dateUtils';
+import { isOverdue, isTaskOnDate, getPriorityWeight } from '../../domain/dateUtils';
 
 interface UpcomingTasksProps {
     tasks: Task[];
@@ -179,10 +179,9 @@ export const UpcomingTasks: React.FC<UpcomingTasksProps> = ({
             return todayTask || isUpcomingWithin12h;
         })
         .sort((a, b) => {
-            // Priority first (High ID:2 > Low ID:1 > Normal ID:0)
-            if (a.priority !== b.priority) {
-                return (b.priority || 0) - (a.priority || 0);
-            }
+            // Priority first using weight (High > Normal > Low)
+            const priorityDiff = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+            if (priorityDiff !== 0) return priorityDiff;
             // Then by start time
             return getMinutesUntilStart(a) - getMinutesUntilStart(b);
         });

@@ -7,13 +7,14 @@ import { Badge } from '../ui/Badge';
 import type { Task } from '../../domain/types';
 import { PRIORITY_INFO } from '../../domain/types';
 import { formatDateRange, formatTimeRange, isOverdue, hasTime } from '../../domain/dateUtils';
-import { useCategories } from '../../hooks/useCategories';
 
 export interface TaskCardProps {
     task: Task;
     selected?: boolean;
     onClick?: () => void;
     onStatusChange?: (status: Task['status']) => void;
+    getCategoryById?: (id: string) => any;
+    getCategoryColor?: (id: string) => string;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -21,14 +22,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     selected = false,
     onClick,
     onStatusChange,
+    getCategoryById,
+    getCategoryColor,
 }) => {
-    const { getCategoryById, getCategoryColor } = useCategories();
     const overdue = isOverdue(task);
 
     // Dinamik kategorilerden bilgi al
-    const category = getCategoryById(task.category);
+    const category = getCategoryById?.(task.category);
     const categoryLabel = category?.name || task.category;
-    const categoryColor = task.color || getCategoryColor(task.category);
+    const categoryColor = task.color || getCategoryColor?.(task.category) || '#64748b';
 
     const priorityInfo = PRIORITY_INFO[task.priority];
     const showTime = hasTime(task);

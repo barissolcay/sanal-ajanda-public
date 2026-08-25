@@ -222,7 +222,10 @@ export const ListsPage: React.FC = () => {
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
-                            onEdit={() => setEditingTask(selectedTask)}
+                            onEdit={() => {
+                                setEditingTask(selectedTask);
+                                setSelectedTask(null);
+                            }}
                             onDelete={handleDeleteTask}
                             onStatusChange={handleStatusChange}
                         />

@@ -138,6 +138,7 @@ export const YearPage: React.FC = () => {
         if (editingTask) {
             await updateTask(editingTask.id, {
                 ...data,
+                color: (data.color || null) as any,
                 endDate: data.endDate || undefined,
                 startTime: data.startTime || undefined,
                 endTime: data.endTime || undefined,
@@ -183,7 +184,7 @@ export const YearPage: React.FC = () => {
                 <div className="flex-1 overflow-hidden glass-panel m-2 md:m-4">
                     <YearCalendar
                         date={currentDate}
-                        tasks={tasks}
+                        tasks={yearTasks}
                         weekStartsOn={settings.weekStartsOn}
                         selectedMonth={selectedMonth}
                         onMonthClick={handleMonthClick}
@@ -464,7 +465,10 @@ export const YearPage: React.FC = () => {
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
-                            onEdit={() => setEditingTask(selectedTask)}
+                            onEdit={() => {
+                                setEditingTask(selectedTask);
+                                setSelectedTask(null);
+                            }}
                             onDelete={handleDeleteTask}
                             onStatusChange={handleStatusChange}
                         />

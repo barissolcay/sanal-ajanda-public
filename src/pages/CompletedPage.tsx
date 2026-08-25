@@ -6,7 +6,7 @@ import { TaskDetailPanel } from '../components/tasks/TaskDetailPanel';
 import { TaskFormModal, type TaskFormData } from '../components/tasks/TaskFormModal';
 import { useTasks } from '../hooks/useTasks';
 import type { Task } from '../domain/types';
-import { subDays, isAfter } from 'date-fns';
+import { subDays, isAfter, startOfDay } from 'date-fns';
 import { fromDateString } from '../domain/dateUtils';
 
 type DateFilter = 'all' | 'week' | 'month';
@@ -29,7 +29,7 @@ export const CompletedPage: React.FC = () => {
         // Date filter
         if (dateFilter !== 'all') {
             const now = new Date();
-            const cutoff = dateFilter === 'week' ? subDays(now, 7) : subDays(now, 30);
+            const cutoff = startOfDay(dateFilter === 'week' ? subDays(now, 7) : subDays(now, 30));
             filtered = filtered.filter(t => {
                 const taskDate = fromDateString(t.updatedAt.split('T')[0]);
                 return isAfter(taskDate, cutoff);
@@ -46,13 +46,14 @@ export const CompletedPage: React.FC = () => {
         }
 
         // Sort by completion date (updatedAt) descending
-        return filtered.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        return [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     }, [tasks, dateFilter, searchQuery]);
 
     const handleUpdateTask = async (data: TaskFormData) => {
         if (editingTask) {
             await updateTask(editingTask.id, {
                 ...data,
+                color: (data.color || null) as any,
                 endDate: data.endDate || undefined,
                 startTime: data.startTime || undefined,
                 endTime: data.endTime || undefined,
@@ -142,7 +143,10 @@ export const CompletedPage: React.FC = () => {
                         <TaskDetailPanel
                             task={selectedTask}
                             onClose={() => setSelectedTask(null)}
-                            onEdit={() => setEditingTask(selectedTask)}
+                            onEdit={() => {
+                                setEditingTask(selectedTask);
+                                setSelectedTask(null);
+                            }}
                             onDelete={handleDeleteTask}
                             onStatusChange={handleStatusChange}
                         />

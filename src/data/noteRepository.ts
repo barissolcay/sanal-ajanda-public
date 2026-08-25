@@ -48,7 +48,7 @@ export async function getAllNotes(): Promise<Note[]> {
 
     if (error) {
         console.error('Error fetching notes:', error);
-        return [];
+        throw error;
     }
 
     return (data || []).map(mapToDomain);
