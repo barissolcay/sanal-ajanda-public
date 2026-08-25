@@ -1,6 +1,6 @@
-// TaskFormModal Component - Multi-Date, Undated & Batch Quick Add Support
+// TaskFormModal Component - Multi-Date, Continuous Range, Batch & Undated Support
 import React, { useState, useEffect } from 'react';
-import { X, Layers, Calendar, ListPlus, Sparkles } from 'lucide-react';
+import { X, Layers, Calendar, CalendarRange, ListPlus, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -33,7 +33,7 @@ export interface TaskFormModalProps {
     onSubmitBatch?: (tasksData: TaskFormData[]) => Promise<void> | void;
 }
 
-type DateMode = 'single' | 'undated' | 'range_separate';
+export type DateMode = 'single' | 'range_continuous' | 'range_separate' | 'undated';
 
 const statusOptions = [
     { value: 'pending', label: 'Bekliyor' },
@@ -76,7 +76,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
     // Mode: Single Form or Bulk Multi-Line Add
     const [creationTab, setCreationTab] = useState<'single' | 'bulk'>('single');
 
-    // Date Mode: Single day, Undated/Plan, or Multi-day separate tasks
+    // Date Mode: Single day, Multi-day Continuous Range, Multi-day Separate Batch, or Undated
     const [dateMode, setDateMode] = useState<DateMode>('single');
     const [rangeEndDate, setRangeEndDate] = useState<string>('');
 
@@ -101,6 +101,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
     useEffect(() => {
         if (isModalOpen) {
             if (task) {
+                const hasRange = Boolean(task.startDate && task.endDate && task.endDate !== task.startDate);
                 setFormData({
                     title: task.title,
                     description: task.description || '',
@@ -108,19 +109,27 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                     status: task.status,
                     priority: task.priority,
                     color: task.color || '',
-                    startDate: task.startDate,
+                    startDate: task.startDate || toDateString(new Date()),
                     endDate: task.endDate || '',
                     startTime: task.startTime || '',
                     endTime: task.endTime || '',
                 });
-                setDateMode(task.startDate ? 'single' : 'undated');
+                setDateMode(!task.startDate ? 'undated' : (hasRange ? 'range_continuous' : 'single'));
                 setRangeEndDate('');
             } else if (initialData) {
+                const hasRange = Boolean(initialData.startDate && initialData.endDate && initialData.endDate !== initialData.startDate);
                 setFormData({
                     ...getDefaultFormData(),
                     ...initialData,
+                    startDate: initialData.startDate || toDateString(new Date()),
+                    endDate: initialData.endDate || '',
                 });
-                setDateMode(initialData.startDate ? 'single' : 'undated');
+                setDateMode(
+                    initialData.startDate === undefined
+                        ? 'undated'
+                        : (hasRange ? 'range_continuous' : 'single')
+                );
+                setRangeEndDate('');
             } else {
                 setFormData(getDefaultFormData());
                 setDateMode('single');
@@ -153,11 +162,20 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 newErrors.title = 'Başlık zorunludur';
             }
 
-            if (dateMode === 'single' && !formData.startDate) {
-                newErrors.startDate = 'Başlangıç tarihi zorunludur';
-            }
-
-            if (dateMode === 'range_separate') {
+            if (dateMode === 'single') {
+                if (!formData.startDate) {
+                    newErrors.startDate = 'Tarih seçiniz';
+                }
+            } else if (dateMode === 'range_continuous') {
+                if (!formData.startDate) {
+                    newErrors.startDate = 'Başlangıç tarihi seçiniz';
+                }
+                if (!formData.endDate) {
+                    newErrors.endDate = 'Bitiş tarihi seçiniz';
+                } else if (formData.startDate && formData.endDate < formData.startDate) {
+                    newErrors.endDate = 'Bitiş tarihi başlangıçtan önce olamaz';
+                }
+            } else if (dateMode === 'range_separate') {
                 if (!formData.startDate) {
                     newErrors.startDate = 'Başlangıç tarihi seçiniz';
                 }
@@ -209,14 +227,34 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                             await onSubmit(item);
                         }
                     }
-                } else {
-                    // Single or Undated
+                } else if (dateMode === 'range_continuous') {
+                    // Single continuous multi-day spanning task
                     const payload: TaskFormData = {
                         ...formData,
-                        startDate: dateMode === 'undated' ? undefined : formData.startDate,
-                        endDate: dateMode === 'undated' ? undefined : (formData.endDate || undefined),
-                        startTime: dateMode === 'undated' ? undefined : (formData.startTime || undefined),
-                        endTime: dateMode === 'undated' ? undefined : (formData.endTime || undefined),
+                        startDate: formData.startDate,
+                        endDate: formData.endDate || formData.startDate,
+                        startTime: formData.startTime || undefined,
+                        endTime: formData.endTime || undefined,
+                    };
+                    await onSubmit(payload);
+                } else if (dateMode === 'single') {
+                    // Single 1-day task
+                    const payload: TaskFormData = {
+                        ...formData,
+                        startDate: formData.startDate,
+                        endDate: undefined,
+                        startTime: formData.startTime || undefined,
+                        endTime: formData.endTime || undefined,
+                    };
+                    await onSubmit(payload);
+                } else {
+                    // Undated / Backlog Plan
+                    const payload: TaskFormData = {
+                        ...formData,
+                        startDate: undefined,
+                        endDate: undefined,
+                        startTime: undefined,
+                        endTime: undefined,
                     };
                     await onSubmit(payload);
                 }
@@ -301,140 +339,178 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 aria-modal="true"
                 aria-labelledby="task-form-modal-title"
             >
-                <div
-                    className="w-full max-w-lg bg-slate-900/95 backdrop-blur-2xl border border-slate-800/80 rounded-2xl shadow-2xl max-h-[92vh] overflow-y-auto animate-scaleIn"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Top Glow bar */}
-                    <div
-                        className="h-1.5 w-full"
-                        style={{ backgroundColor: displayColor }}
-                    />
-
+                <div className="glass-panel w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border border-slate-700/80 bg-slate-900/95">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-800/60">
-                        <div className="flex items-center gap-2">
-                            <h2 id="task-form-modal-title" className="text-base md:text-lg font-semibold text-slate-100">
-                                {isEditing ? 'Görevi Düzenle' : 'Yeni Görev Oluştur'}
-                            </h2>
-                        </div>
-
-                        {!isEditing && (
-                            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
-                                <button
-                                    type="button"
-                                    onClick={() => setCreationTab('single')}
-                                    className={clsx(
-                                        "px-3 py-1 rounded-lg text-xs font-medium transition-all",
-                                        creationTab === 'single'
-                                            ? "bg-indigo-600 text-white shadow-sm"
-                                            : "text-slate-400 hover:text-slate-200"
-                                    )}
-                                >
-                                    Tekli
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCreationTab('bulk')}
-                                    className={clsx(
-                                        "px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1",
-                                        creationTab === 'bulk'
-                                            ? "bg-indigo-600 text-white shadow-sm"
-                                            : "text-slate-400 hover:text-slate-200"
-                                    )}
-                                >
-                                    <ListPlus className="w-3.5 h-3.5" />
-                                    <span>Toplu Ekle</span>
-                                </button>
+                    <div className="flex items-center justify-between p-6 border-b border-slate-800/80">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                                {isEditing ? <Calendar className="w-5 h-5" /> : (creationTab === 'single' ? <CalendarRange className="w-5 h-5" /> : <ListPlus className="w-5 h-5" />)}
                             </div>
-                        )}
-
+                            <div>
+                                <h2 id="task-form-modal-title" className="text-lg font-bold text-slate-100">
+                                    {isEditing ? 'Görevi Düzenle' : (creationTab === 'single' ? 'Yeni Görev / Plan' : 'Hızlı Çoklu Görev Ekle')}
+                                </h2>
+                                <p className="text-xs text-slate-400">
+                                    {isEditing ? 'Görev detaylarını güncelleyin' : 'Ajandanıza tekli, sürekli aralıklı veya toplu görev ekleyin'}
+                                </p>
+                            </div>
+                        </div>
                         <button
                             onClick={onClose}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-xl transition-colors"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
+                    {/* Mode Toggle (Tekli vs Toplu) - Only when creating new */}
+                    {!isEditing && (
+                        <div className="flex border-b border-slate-800/80 bg-slate-950/40 p-1.5 gap-1.5 mx-6 mt-4 rounded-xl border">
+                            <button
+                                type="button"
+                                onClick={() => setCreationTab('single')}
+                                className={clsx(
+                                    "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all",
+                                    creationTab === 'single'
+                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                                )}
+                            >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>Tekli / Aralıklı Form</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setCreationTab('bulk')}
+                                className={clsx(
+                                    "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all",
+                                    creationTab === 'bulk'
+                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                                )}
+                            >
+                                <ListPlus className="w-3.5 h-3.5" />
+                                <span>Toplu Hızlı Ekle (Satır Satır)</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Single Task Form */}
                     {creationTab === 'single' ? (
-                        /* Single Task Form */
-                        <form onSubmit={(e) => { e.preventDefault(); handleFormSubmit(false); }} className="p-6 space-y-4">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleFormSubmit(false);
+                            }}
+                            className="p-6 space-y-4"
+                        >
+                            {/* Title */}
                             <Input
-                                label="Başlık *"
+                                label="Görev Başlığı *"
                                 value={formData.title}
                                 onChange={(e) => updateField('title', e.target.value)}
+                                placeholder="Örn: İş başvurusu yap / Raporu tamamla"
                                 error={errors.title}
-                                placeholder="Ne yapacaksın?"
                                 autoFocus
                             />
 
+                            {/* Description */}
                             <div>
                                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                                    Açıklama / Detaylar
+                                    Açıklama (İsteğe Bağlı)
                                 </label>
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => updateField('description', e.target.value)}
-                                    placeholder="Eklemek istediğin notlar, linkler..."
+                                    placeholder="Göreve dair notlar veya detaylar..."
                                     rows={2}
                                     className="w-full px-3.5 py-2 rounded-xl bg-slate-950/70 border border-slate-700/60 text-slate-200 placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 resize-none transition-all"
                                 />
                             </div>
 
                             {/* Date Mode Selector */}
-                            {!isEditing && (
-                                <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                                        Tarih Seçimi / Dağıtımı
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateMode('single')}
-                                            className={clsx(
-                                                "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
-                                                dateMode === 'single'
-                                                    ? "bg-indigo-600/20 text-indigo-200 border-indigo-500/60 shadow-sm"
-                                                    : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
-                                            )}
-                                        >
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            <span>Tek Gün</span>
-                                        </button>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                                    Tarih Seçimi / Dağıtımı
+                                </label>
+                                <div className={clsx("grid gap-2", isEditing ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDateMode('single')}
+                                        className={clsx(
+                                            "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
+                                            dateMode === 'single'
+                                                ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
+                                                : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                        )}
+                                    >
+                                        <Calendar className="w-4 h-4 text-indigo-400" />
+                                        <span className="font-semibold">Tek Gün</span>
+                                        <span className="text-[10px] text-slate-500">1 günlük görev</span>
+                                    </button>
 
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDateMode('range_continuous');
+                                            if (!formData.endDate && formData.startDate) {
+                                                updateField('endDate', formData.startDate);
+                                            }
+                                        }}
+                                        className={clsx(
+                                            "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
+                                            dateMode === 'range_continuous'
+                                                ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
+                                                : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                        )}
+                                    >
+                                        <CalendarRange className="w-4 h-4 text-cyan-400" />
+                                        <span className="font-semibold">Tarih Aralığı</span>
+                                        <span className="text-[10px] text-slate-500">Tek sürekli görev</span>
+                                    </button>
+
+                                    {!isEditing && (
                                         <button
                                             type="button"
-                                            onClick={() => setDateMode('range_separate')}
+                                            onClick={() => {
+                                                setDateMode('range_separate');
+                                                if (!rangeEndDate && formData.startDate) {
+                                                    setRangeEndDate(formData.startDate);
+                                                }
+                                            }}
                                             className={clsx(
                                                 "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
                                                 dateMode === 'range_separate'
-                                                    ? "bg-indigo-600/20 text-indigo-200 border-indigo-500/60 shadow-sm"
+                                                    ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
                                                     : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
                                             )}
                                         >
-                                            <Layers className="w-3.5 h-3.5" />
-                                            <span>Tarih Aralığı (Ayrı Görevler)</span>
+                                            <Layers className="w-4 h-4 text-amber-400" />
+                                            <span className="font-semibold">Her Güne Ayrı</span>
+                                            <span className="text-[10px] text-slate-500">Günlük ayrı görevler</span>
                                         </button>
+                                    )}
 
-                                        <button
-                                            type="button"
-                                            onClick={() => setDateMode('undated')}
-                                            className={clsx(
-                                                "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
-                                                dateMode === 'undated'
-                                                    ? "bg-indigo-600/20 text-indigo-200 border-indigo-500/60 shadow-sm"
-                                                    : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
-                                            )}
-                                        >
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                            <span>Süresiz Plan</span>
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setDateMode('undated')}
+                                        className={clsx(
+                                            "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
+                                            dateMode === 'undated'
+                                                ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
+                                                : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                        )}
+                                    >
+                                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                                        <span className="font-semibold">Süresiz Plan</span>
+                                        <span className="text-[10px] text-slate-500">Tarihsiz havuz</span>
+                                    </button>
                                 </div>
-                            )}
+                            </div>
 
                             {/* Date inputs based on mode */}
+                            {/* 1) Single Day */}
                             {dateMode === 'single' && (
                                 <div className="grid grid-cols-2 gap-4">
                                     <Input
@@ -462,10 +538,51 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 </div>
                             )}
 
+                            {/* 2) Multi-Day Single Continuous Task */}
+                            {dateMode === 'range_continuous' && (
+                                <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 space-y-3">
+                                    <p className="text-[11px] text-cyan-300">
+                                        📅 <strong>Sürekli Görev:</strong> Bu tarih aralığı boyunca takvimde tek bir görev olarak yer alır (Örn: 5 günlük proje, ödev, seyahat veya hatırlatma).
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input
+                                            type="date"
+                                            label="Başlangıç Tarihi *"
+                                            value={formData.startDate || ''}
+                                            onChange={(e) => updateField('startDate', e.target.value)}
+                                            error={errors.startDate}
+                                        />
+                                        <Input
+                                            type="date"
+                                            label="Bitiş Tarihi *"
+                                            value={formData.endDate || ''}
+                                            onChange={(e) => updateField('endDate', e.target.value)}
+                                            error={errors.endDate}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-cyan-500/20">
+                                        <Input
+                                            type="time"
+                                            label="Başlangıç Saati (İsteğe Bağlı)"
+                                            value={formData.startTime || ''}
+                                            onChange={(e) => updateField('startTime', e.target.value)}
+                                        />
+                                        <Input
+                                            type="time"
+                                            label="Bitiş Saati (İsteğe Bağlı)"
+                                            value={formData.endTime || ''}
+                                            onChange={(e) => updateField('endTime', e.target.value)}
+                                            error={errors.endTime}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 3) Batch Multi-Day Separate Tasks */}
                             {dateMode === 'range_separate' && (
-                                <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 space-y-3">
+                                <div className="p-3.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30 space-y-3">
                                     <p className="text-[11px] text-indigo-300">
-                                        ✨ Seçtiğin tarih aralığındaki her bir gün için ayrı bağımsız görev oluşturulur.
+                                        ✨ <strong>Ayrı Görevler:</strong> Seçtiğin tarih aralığındaki her bir gün için bağımsız, ayrı birer görev oluşturulur (Örn: 5 günün her günü için günlük egzersiz/ilaç görevi).
                                     </p>
                                     <div className="grid grid-cols-2 gap-3">
                                         <Input
@@ -486,10 +603,11 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 </div>
                             )}
 
+                            {/* 4) Undated */}
                             {dateMode === 'undated' && (
-                                <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-500/30">
-                                    <p className="text-xs text-cyan-300">
-                                        📌 Bu görev takvimde yer almaz, <strong>Listeler &gt; Planlar / Süresiz</strong> sekmesinde saklanır.
+                                <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-700/60">
+                                    <p className="text-xs text-slate-300">
+                                        📌 <strong>Süresiz Plan:</strong> Bu görev takvim günlerinde yer almaz, <strong>Listeler &gt; Planlar / Süresiz</strong> sekmesinde saklanır.
                                     </p>
                                 </div>
                             )}
