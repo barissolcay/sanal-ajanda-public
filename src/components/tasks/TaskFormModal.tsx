@@ -214,17 +214,46 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         end: parseISO(rangeEndDate),
                     });
 
-                    const tasksToCreate: TaskFormData[] = days.map((day: Date) => ({
-                        ...formData,
-                        startDate: toDateString(day),
-                        endDate: undefined,
-                    }));
+                    if (isEditing && days.length > 0) {
+                        // Update existing task to the first day
+                        await onSubmit({
+                            ...formData,
+                            startDate: toDateString(days[0]),
+                            endDate: undefined,
+                            startTime: formData.startTime || undefined,
+                            endTime: formData.endTime || undefined,
+                        });
 
-                    if (onSubmitBatch) {
-                        await onSubmitBatch(tasksToCreate);
+                        // Create remaining days as additional tasks
+                        if (days.length > 1) {
+                            const remainingTasks: TaskFormData[] = days.slice(1).map((day: Date) => ({
+                                ...formData,
+                                startDate: toDateString(day),
+                                endDate: undefined,
+                                startTime: formData.startTime || undefined,
+                                endTime: formData.endTime || undefined,
+                            }));
+                            if (onSubmitBatch) {
+                                await onSubmitBatch(remainingTasks);
+                            } else {
+                                for (const item of remainingTasks) {
+                                    await onSubmit(item);
+                                }
+                            }
+                        }
                     } else {
-                        for (const item of tasksToCreate) {
-                            await onSubmit(item);
+                        const tasksToCreate: TaskFormData[] = days.map((day: Date) => ({
+                            ...formData,
+                            startDate: toDateString(day),
+                            endDate: undefined,
+                        }));
+
+                        if (onSubmitBatch) {
+                            await onSubmitBatch(tasksToCreate);
+                        } else {
+                            for (const item of tasksToCreate) {
+                                await onSubmit(item);
+                            }
                         }
                     }
                 } else if (dateMode === 'range_continuous') {
@@ -434,10 +463,15 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                                     Tarih Seçimi / Dağıtımı
                                 </label>
-                                <div className={clsx("grid gap-2", isEditing ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4")}>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                     <button
                                         type="button"
-                                        onClick={() => setDateMode('single')}
+                                        onClick={() => {
+                                            setDateMode('single');
+                                            if (!formData.startDate) {
+                                                updateField('startDate', toDateString(new Date()));
+                                            }
+                                        }}
                                         className={clsx(
                                             "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
                                             dateMode === 'single'
@@ -454,8 +488,12 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                         type="button"
                                         onClick={() => {
                                             setDateMode('range_continuous');
-                                            if (!formData.endDate && formData.startDate) {
-                                                updateField('endDate', formData.startDate);
+                                            const start = formData.startDate || toDateString(new Date());
+                                            if (!formData.startDate) {
+                                                updateField('startDate', start);
+                                            }
+                                            if (!formData.endDate) {
+                                                updateField('endDate', start);
                                             }
                                         }}
                                         className={clsx(
@@ -470,27 +508,29 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                                         <span className="text-[10px] text-slate-500">Tek sürekli görev</span>
                                     </button>
 
-                                    {!isEditing && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setDateMode('range_separate');
-                                                if (!rangeEndDate && formData.startDate) {
-                                                    setRangeEndDate(formData.startDate);
-                                                }
-                                            }}
-                                            className={clsx(
-                                                "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
-                                                dateMode === 'range_separate'
-                                                    ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
-                                                    : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
-                                            )}
-                                        >
-                                            <Layers className="w-4 h-4 text-amber-400" />
-                                            <span className="font-semibold">Her Güne Ayrı</span>
-                                            <span className="text-[10px] text-slate-500">Günlük ayrı görevler</span>
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDateMode('range_separate');
+                                            const start = formData.startDate || toDateString(new Date());
+                                            if (!formData.startDate) {
+                                                updateField('startDate', start);
+                                            }
+                                            if (!rangeEndDate) {
+                                                setRangeEndDate(start);
+                                            }
+                                        }}
+                                        className={clsx(
+                                            "p-2.5 rounded-xl text-xs font-medium border text-center transition-all flex flex-col items-center gap-1",
+                                            dateMode === 'range_separate'
+                                                ? "bg-indigo-600/25 text-indigo-200 border-indigo-500/70 shadow-sm ring-1 ring-indigo-500/40"
+                                                : "bg-slate-950/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                                        )}
+                                    >
+                                        <Layers className="w-4 h-4 text-amber-400" />
+                                        <span className="font-semibold">Her Güne Ayrı</span>
+                                        <span className="text-[10px] text-slate-500">Günlük ayrı görevler</span>
+                                    </button>
 
                                     <button
                                         type="button"
