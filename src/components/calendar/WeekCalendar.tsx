@@ -1,4 +1,4 @@
-// WeekCalendar Component - 7-day Adaptive Column View with Collapsible Days
+// WeekCalendar Component - 7-day Adaptive Column View with Date-Specific Collapsible Days
 import React, { useState, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
 import type { Task } from '../../domain/types';
@@ -20,6 +20,7 @@ import {
     isOverdue,
     formatTime,
     sortTasksByPriority,
+    toDateString,
 } from '../../domain/dateUtils';
 
 export interface WeekCalendarProps {
@@ -32,7 +33,7 @@ export interface WeekCalendarProps {
     selectedTaskId?: string;
 }
 
-const STORAGE_KEY = 'sanal_ajandam_collapsed_week_days';
+const STORAGE_KEY = 'sanal_ajandam_collapsed_week_dates';
 
 export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     date,
@@ -47,29 +48,29 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
     const weekDays = useMemo(() => getWeekDays(date, weekStartsOn), [date, weekStartsOn]);
     const [dragOverDay, setDragOverDay] = useState<string | null>(null);
 
-    // Collapsed day indices (0 to 6) with local storage persistence
-    const [collapsedIndices, setCollapsedIndices] = useState<Set<number>>(() => {
+    // Collapsed dates (YYYY-MM-DD) with local storage persistence
+    const [collapsedDates, setCollapsedDates] = useState<Set<string>>(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length < 7) {
+                if (Array.isArray(parsed)) {
                     return new Set(parsed);
                 }
             }
         } catch (e) {
-            console.error('Error loading collapsed week days from storage:', e);
+            console.error('Error loading collapsed week dates from storage:', e);
         }
-        return new Set<number>();
+        return new Set<string>();
     });
 
     useEffect(() => {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(collapsedIndices)));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(collapsedDates)));
         } catch (e) {
-            console.error('Error saving collapsed week days to storage:', e);
+            console.error('Error saving collapsed week dates to storage:', e);
         }
-    }, [collapsedIndices]);
+    }, [collapsedDates]);
 
     // Map tasks by day
     const tasksByDay = useMemo(() => {
@@ -84,40 +85,98 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
         return tasksByDay.get(day.toISOString()) || [];
     };
 
-    // Toggle column collapse / expand (Guards: At least 1 day must remain open)
-    const toggleDayCollapse = (dayIndex: number) => {
-        setCollapsedIndices(prev => {
+    // Toggle column collapse / expand for a specific date (Guards: At least 1 day in current week must remain open)
+    const toggleDayCollapse = (dateKey: string) => {
+        setCollapsedDates(prev => {
             const next = new Set(prev);
-            if (next.has(dayIndex)) {
-                next.delete(dayIndex);
+            if (next.has(dateKey)) {
+                next.delete(dateKey);
             } else {
-                // Cannot collapse all 7 days (keep at least 1 open)
-                if (next.size >= 6) {
-                    return prev;
+                // Count how many days in the CURRENT week are already collapsed
+                const currentWeekKeys = weekDays.map(d => toDateString(d));
+                const currentWeekCollapsedCount = currentWeekKeys.filter(k => next.has(k)).length;
+                if (currentWeekCollapsedCount >= 6) {
+                    return prev; // Keep at least 1 day open in the current week view
                 }
-                next.add(dayIndex);
+                next.add(dateKey);
             }
             return next;
         });
     };
 
+    // Quick Action: Expand all days in the currently viewed week
     const expandAll = () => {
-        setCollapsedIndices(new Set());
+        setCollapsedDates(prev => {
+            const next = new Set(prev);
+            weekDays.forEach(d => next.delete(toDateString(d)));
+            return next;
+        });
     };
 
+    // Quick Action: Collapse weekend days of the current week
     const collapseWeekends = () => {
-        // Mon starts on 1 -> Sat is 5, Sun is 6
-        // Sun starts on 0 -> Sun is 0, Sat is 6
-        const weekendIndices = weekStartsOn === 1 ? [5, 6] : [0, 6];
-        setCollapsedIndices(new Set(weekendIndices));
+        setCollapsedDates(prev => {
+            const next = new Set(prev);
+            const weekendIndices = weekStartsOn === 1 ? [5, 6] : [0, 6];
+            weekDays.forEach((d, idx) => {
+                const key = toDateString(d);
+                if (weekendIndices.includes(idx)) {
+                    next.add(key);
+                } else {
+                    next.delete(key);
+                }
+            });
+            return next;
+        });
     };
 
+    // Quick Action: Focus today in current week
     const focusToday = () => {
         const todayIdx = weekDays.findIndex(d => isToday(d));
         if (todayIdx !== -1) {
-            const indices = [0, 1, 2, 3, 4, 5, 6].filter(i => i !== todayIdx);
-            setCollapsedIndices(new Set(indices));
+            const todayKey = toDateString(weekDays[todayIdx]);
+            setCollapsedDates(prev => {
+                const next = new Set(prev);
+                weekDays.forEach(d => {
+                    const key = toDateString(d);
+                    if (key !== todayKey) {
+                        next.add(key);
+                    } else {
+                        next.delete(key);
+                    }
+                });
+                return next;
+            });
         }
+    };
+
+    // Quick Action: Collapse empty days in current week
+    const collapseEmptyDays = () => {
+        setCollapsedDates(prev => {
+            const next = new Set(prev);
+            const emptyDays = weekDays.filter(d => getTasksForDay(d).length === 0);
+            const nonEmptyDays = weekDays.filter(d => getTasksForDay(d).length > 0);
+
+            if (emptyDays.length === 0) return prev;
+
+            if (nonEmptyDays.length === 0) {
+                // If all 7 days are empty, keep today or the first day open
+                const keepOpen = weekDays.find(d => isToday(d)) || weekDays[0];
+                const keepOpenKey = toDateString(keepOpen);
+                emptyDays.forEach(d => {
+                    const key = toDateString(d);
+                    if (key !== keepOpenKey) {
+                        next.add(key);
+                    } else {
+                        next.delete(key);
+                    }
+                });
+            } else {
+                emptyDays.forEach(d => next.add(toDateString(d)));
+                nonEmptyDays.forEach(d => next.delete(toDateString(d)));
+            }
+            return next;
+        });
     };
 
     // Style helper for task card category colors
@@ -156,7 +215,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
         }
     };
 
-    const collapsedCount = collapsedIndices.size;
+    // Check if any day in CURRENT week is collapsed
+    const currentWeekCollapsedCount = useMemo(() => {
+        return weekDays.filter(d => collapsedDates.has(toDateString(d))).length;
+    }, [weekDays, collapsedDates]);
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
@@ -165,15 +227,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                 <div className="flex items-center gap-1.5 text-slate-400">
                     <CalendarIcon className="w-3.5 h-3.5 text-indigo-400" />
                     <span>Haftalık Görünüm</span>
-                    {collapsedCount > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-medium text-[10px]">
-                            {collapsedCount} gün daraltıldı
-                        </span>
-                    )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                    {collapsedCount > 0 && (
+                    {currentWeekCollapsedCount > 0 && (
                         <button
                             type="button"
                             onClick={expandAll}
@@ -184,6 +241,15 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                             <span>Tümünü Aç</span>
                         </button>
                     )}
+
+                    <button
+                        type="button"
+                        onClick={collapseEmptyDays}
+                        className="px-2 py-1 rounded-md bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] font-medium transition-colors"
+                        title="Görevi olmayan boş günleri daralt"
+                    >
+                        Boş Günleri Kapat
+                    </button>
 
                     <button
                         type="button"
@@ -208,11 +274,12 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
             {/* Scrollable Adaptive Week Columns Container */}
             <div className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide">
                 <div className="min-w-[680px] md:min-w-full h-full flex">
-                    {weekDays.map((day, dayIndex) => {
+                    {weekDays.map((day) => {
                         const dayIso = day.toISOString();
+                        const dateKey = toDateString(day);
                         const isDragOver = dragOverDay === dayIso;
                         const dayTasks = getTasksForDay(day);
-                        const isCollapsed = collapsedIndices.has(dayIndex);
+                        const isCollapsed = collapsedDates.has(dateKey);
                         const activeToday = isToday(day);
 
                         // If column is collapsed, render slim vertical pill column
@@ -227,7 +294,7 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                     onDragOver={(e) => handleDragOver(e, dayIso)}
                                     onDragLeave={handleDragLeave}
                                     onDrop={(e) => handleDrop(e, day)}
-                                    onClick={() => toggleDayCollapse(dayIndex)}
+                                    onClick={() => toggleDayCollapse(dateKey)}
                                     title={`${formatDate(day, 'EEEE d MMMM')}: ${dayTasks.length} görev (Genişletmek için tıkla)`}
                                     className={clsx(
                                         'group relative flex flex-col items-center justify-between py-3 px-1 border-r border-slate-800/60 last:border-r-0 select-none cursor-pointer transition-all duration-300 ease-in-out',
@@ -366,10 +433,10 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                                         type="button"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            toggleDayCollapse(dayIndex);
+                                            toggleDayCollapse(dateKey);
                                         }}
                                         className="p-1 rounded-md text-slate-400 hover:text-slate-100 hover:bg-slate-800/80 transition-colors"
-                                        title="Bu sütunu daralt (Diğer günlere yer aç)"
+                                        title="Bu günü daralt (Diğer günlere yer aç)"
                                     >
                                         <ChevronLeft className="w-3.5 h-3.5" />
                                     </button>
