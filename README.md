@@ -1,5 +1,7 @@
 # Sanal Ajanda
 
+> **In English:** A personal planner that runs as an installable web app (PWA). Track tasks in daily, weekly, monthly and yearly views, and organise them by category, priority, status and date range. Each user's data is isolated with Supabase Auth and Row Level Security. Built with React 18, TypeScript, Vite, Tailwind CSS and Supabase, tested with Vitest.
+
 Supabase destekli, PWA uyumlu kişisel ajanda uygulaması. Görevleri günlük, haftalık, aylık ve yıllık görünümlerde takip edebilir; kategori, öncelik, durum ve tarih aralığına göre düzenleyebilirsiniz.
 
 ## Özellikler
